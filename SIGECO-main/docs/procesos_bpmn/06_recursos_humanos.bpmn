@@ -1,0 +1,162 @@
+<?xml version='1.0' encoding='utf-8'?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_06_recursos_humanos" targetNamespace="https://nexusadmin.local/bpmn" exporter="SIGECO BPMN 2.0">
+  <bpmn:process id="Process_06_recursos_humanos" name="Proceso del área de Recursos Humanos" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_06_recursos_humanos">
+      <bpmn:lane id="Lane_0" name="Recursos Humanos">
+        <bpmn:flowNodeRef>inicio</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>revisar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>decision</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>aprobar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>rechazar</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_1" name="SIGECO">
+        <bpmn:flowNodeRef>pendiente</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>activar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>denegar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fin_ok</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fin_no</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="inicio" name="Recibe solicitud de ingreso">
+      <bpmn:outgoing>Flow_0</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="pendiente" name="Muestra cuenta pendiente del área">
+      <bpmn:incoming>Flow_0</bpmn:incoming>
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="revisar" name="Revisa datos y pertenencia">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="decision" name="¿Corresponde aprobar?">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="aprobar" name="Aprueba acceso al equipo">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="rechazar" name="Rechaza la solicitud">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="activar" name="Activa cuenta del área">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="denegar" name="Mantiene acceso denegado">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:outgoing>Flow_8</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="fin_ok" name="Cuenta aprobada">
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="fin_no" name="Cuenta rechazada">
+      <bpmn:incoming>Flow_8</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_0" sourceRef="inicio" targetRef="pendiente" />
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="pendiente" targetRef="revisar" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="revisar" targetRef="decision" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="decision" targetRef="aprobar" name="Sí" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="decision" targetRef="rechazar" name="No" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="aprobar" targetRef="activar" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="rechazar" targetRef="denegar" />
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="activar" targetRef="fin_ok" />
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="denegar" targetRef="fin_no" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Diagram_06_recursos_humanos">
+    <bpmndi:BPMNPlane id="Plane_06_recursos_humanos" bpmnElement="Process_06_recursos_humanos">
+      <bpmndi:BPMNShape id="Lane_0_di" bpmnElement="Lane_0" isHorizontal="true">
+        <dc:Bounds x="20" y="145" width="1930" height="176" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_1_di" bpmnElement="Lane_1" isHorizontal="true">
+        <dc:Bounds x="20" y="321" width="1930" height="176" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="inicio_di" bpmnElement="inicio">
+        <dc:Bounds x="288.5" y="204.0" width="58" height="58" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="pendiente_di" bpmnElement="pendiente">
+        <dc:Bounds x="460.0" y="369.0" width="205" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="revisar_di" bpmnElement="revisar">
+        <dc:Bounds x="705.0" y="193.0" width="205" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="decision_di" bpmnElement="decision">
+        <dc:Bounds x="1012.5" y="193.0" width="80" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="aprobar_di" bpmnElement="aprobar">
+        <dc:Bounds x="1195.0" y="143.0" width="205" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="rechazar_di" bpmnElement="rechazar">
+        <dc:Bounds x="1195.0" y="248.0" width="205" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="activar_di" bpmnElement="activar">
+        <dc:Bounds x="1440.0" y="319.0" width="205" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="denegar_di" bpmnElement="denegar">
+        <dc:Bounds x="1440.0" y="424.0" width="205" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="fin_ok_di" bpmnElement="fin_ok">
+        <dc:Bounds x="1758.5" y="330.0" width="58" height="58" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="fin_no_di" bpmnElement="fin_no">
+        <dc:Bounds x="1758.5" y="435.0" width="58" height="58" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_0_di" bpmnElement="Flow_0">
+        <di:waypoint x="346.5" y="233.0" />
+        <di:waypoint x="403.25" y="233.0" />
+        <di:waypoint x="403.25" y="409.0" />
+        <di:waypoint x="460.0" y="409.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="665.0" y="409.0" />
+        <di:waypoint x="685.0" y="409.0" />
+        <di:waypoint x="685.0" y="233.0" />
+        <di:waypoint x="705.0" y="233.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="910.0" y="233.0" />
+        <di:waypoint x="961.25" y="233.0" />
+        <di:waypoint x="961.25" y="233.0" />
+        <di:waypoint x="1012.5" y="233.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="1092.5" y="233.0" />
+        <di:waypoint x="1156.25" y="233.0" />
+        <di:waypoint x="1156.25" y="183.0" />
+        <di:waypoint x="1195.0" y="183.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="1092.5" y="233.0" />
+        <di:waypoint x="1130.0" y="233.0" />
+        <di:waypoint x="1130.0" y="288.0" />
+        <di:waypoint x="1195.0" y="288.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="1400.0" y="183.0" />
+        <di:waypoint x="1432.5" y="183.0" />
+        <di:waypoint x="1432.5" y="359.0" />
+        <di:waypoint x="1440.0" y="359.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="1400.0" y="288.0" />
+        <di:waypoint x="1406.25" y="288.0" />
+        <di:waypoint x="1406.25" y="464.0" />
+        <di:waypoint x="1440.0" y="464.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7">
+        <di:waypoint x="1645.0" y="359.0" />
+        <di:waypoint x="1714.25" y="359.0" />
+        <di:waypoint x="1714.25" y="359.0" />
+        <di:waypoint x="1758.5" y="359.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_8_di" bpmnElement="Flow_8">
+        <di:waypoint x="1645.0" y="464.0" />
+        <di:waypoint x="1688.0" y="464.0" />
+        <di:waypoint x="1688.0" y="464.0" />
+        <di:waypoint x="1758.5" y="464.0" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

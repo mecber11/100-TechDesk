@@ -1,0 +1,370 @@
+// SIGECO: modelo físico obtenido de PostgreSQL. Solo estructura, sin datos.
+// Una instalación y base de datos por empresa. cfg.configuracion_empresa tiene una sola fila (id=1).
+
+Table cfg.configuracion_empresa {
+  id smallint [not null, pk]
+  nombre_empresa varchar(160) [not null]
+  ia_habilitada boolean [not null]
+  documentos_habilitados boolean [not null]
+  slack_habilitado boolean [not null]
+  actualizado_en timestamp
+}
+
+Table cfg.historial_configuracion {
+  id_cambio bigint [not null, pk]
+  id_usuario integer
+  antes jsonb [not null]
+  despues jsonb [not null]
+  creado_en timestamp [not null]
+  id_configuracion smallint [not null]
+}
+
+Table docs.documentos {
+  id_documento bigint [not null, pk]
+  codigo varchar(40) [not null, unique]
+  titulo varchar(220) [not null]
+  id_tipo_documento smallint [not null]
+  id_area_propietaria bigint [not null]
+  estado varchar(16) [not null]
+  resumen varchar(500)
+  contenido text
+  enlace_archivo varchar(400)
+  version_actual integer [not null]
+  vigente_desde date
+  vigente_hasta date
+  creado_por integer
+  creado_en timestamptz
+  actualizado_en timestamptz
+}
+
+Table docs.tipos_documento {
+  id_tipo_documento smallint [not null, pk]
+  codigo varchar(20) [not null, unique]
+  nombre varchar(80) [not null]
+}
+
+Table docs.versiones_documento {
+  id_version bigint [not null, pk]
+  id_documento bigint [not null]
+  numero_version integer [not null]
+  contenido text
+  enlace_archivo varchar(400)
+  motivo_cambio varchar(300)
+  creado_por integer
+  creado_en timestamptz [not null]
+  indexes {
+    (id_documento, numero_version) [unique]
+  }
+}
+
+Table org.areas {
+  id_area bigint [not null, pk]
+  nombre varchar(255) [not null]
+  activa boolean [not null]
+  codigo varchar(20) [unique]
+  finalidad varchar(300)
+  orden integer [not null]
+}
+
+Table org.miembros_area {
+  id_area bigint [not null]
+  id_usuario integer [not null]
+  es_encargado boolean [not null]
+  ingresado_en timestamptz [not null]
+  indexes {
+    (id_area, id_usuario) [pk]
+  }
+}
+
+Table req.adjuntos_pedido {
+  id_adjunto bigint [not null, pk]
+  id_pedido bigint [not null]
+  id_historial bigint
+  cargado_por integer
+  origen_archivo varchar(20) [not null]
+  nombre_original varchar(255) [not null]
+  tipo_archivo varchar(120)
+  tamano_bytes bigint
+  disco varchar(40)
+  ruta varchar(500)
+  enlace_externo varchar(1000)
+  creado_en timestamptz [not null]
+}
+
+Table req.avisos_slack {
+  id_aviso bigint [not null, pk]
+  id_pedido bigint [not null]
+  id_area_destino bigint [not null]
+  evento varchar(40) [not null]
+  estado varchar(20) [not null]
+  slack_destinatario varchar(30)
+  error varchar(250)
+  intentos integer [not null]
+  reintentar_en timestamp
+  bloqueado_hasta timestamp
+  enviado_en timestamp
+  creado_en timestamp [not null]
+  indexes {
+    (id_pedido, evento) [unique]
+  }
+}
+
+Table req.detalles_pedido {
+  id_detalle bigint [not null, pk]
+  id_pedido bigint [not null]
+  descripcion varchar(220) [not null]
+  cantidad numeric(10,2)
+  unidad varchar(20)
+  notas varchar(200)
+}
+
+Table req.historial_pedido {
+  id_historial bigint [not null, pk]
+  id_pedido bigint [not null]
+  estado varchar(255) [not null]
+  observacion text
+  modificado_por bigint
+  modificado_en timestamp [not null]
+  estado_anterior varchar(20)
+  estado_nuevo varchar(20)
+}
+
+Table req.pedidos {
+  id_pedido bigint [not null, pk]
+  area_origen bigint [not null]
+  area_destino bigint [not null]
+  solicitado_por bigint
+  documento_relacionado bigint
+  titulo varchar(200) [not null]
+  descripcion text [not null]
+  categoria varchar(255)
+  prioridad varchar(255)
+  estado varchar(255) [not null]
+  fecha_limite date
+  creado_en timestamp
+  actualizado_en timestamp
+  codigo_pedido varchar(30) [unique]
+  tipo_solicitud varchar(16) [not null]
+  respuesta varchar(500)
+  atendido_por integer
+  motivo_escalamiento varchar(500)
+  fecha_escalamiento timestamptz
+  fecha_atencion timestamptz
+  fecha_cierre timestamptz
+  nombre_solicitante text
+  correo_solicitante text
+}
+
+Table sec.intentos_login {
+  id_intento bigint [not null, pk]
+  correo citext [not null]
+  exitoso boolean [not null]
+  direccion_ip varchar(45)
+  realizado_en timestamptz [not null]
+  id_usuario integer
+}
+
+Table sec.permisos {
+  id_permiso integer [not null, pk]
+  codigo varchar(80) [not null, unique]
+  modulo varchar(40) [not null]
+  descripcion varchar(200)
+}
+
+Table sec.roles {
+  id_rol integer [not null, pk]
+  nombre varchar(60) [not null, unique]
+  descripcion varchar(200)
+  es_sistema boolean [not null]
+  activo boolean [not null]
+}
+
+Table sec.roles_permisos {
+  id_rol integer [not null]
+  id_permiso integer [not null]
+  indexes {
+    (id_rol, id_permiso) [pk]
+  }
+}
+
+Table sec.sesiones_usuario {
+  id_sesion uuid [not null, pk]
+  id_usuario integer [not null]
+  inicio timestamptz [not null]
+  fin timestamptz
+  direccion_ip varchar(45)
+  agente_usuario varchar(300)
+}
+
+Table sec.tokens_acceso {
+  id_token bigint [not null, pk]
+  id_usuario integer [not null]
+  hash_token char(64) [not null]
+  expira_en timestamptz [not null]
+  revocado_en timestamptz
+  creado_en timestamptz [not null]
+}
+
+Table sec.usuarios {
+  id_usuario integer [not null, pk]
+  correo citext [not null, unique]
+  contrasena varchar(256) [not null]
+  nombre_completo varchar(160) [not null]
+  telefono varchar(20)
+  tema_preferido varchar(10) [not null]
+  activo boolean [not null]
+  cambiar_contrasena boolean [not null]
+  ultimo_ingreso timestamptz
+  creado_en timestamptz [not null]
+  creado_por integer
+  estado varchar(255) [not null]
+  area_solicitada varchar(255)
+  id_area bigint
+  suspendido_en timestamp
+  slack_user_id varchar(30) [unique]
+}
+
+Table sec.usuarios_roles {
+  id_usuario integer [not null]
+  id_rol integer [not null]
+  asignado_en timestamptz [not null]
+  indexes {
+    (id_usuario, id_rol) [pk]
+  }
+}
+
+Ref: cfg.historial_configuracion.id_usuario > sec.usuarios.id_usuario
+Ref: cfg.historial_configuracion.id_configuracion > cfg.configuracion_empresa.id
+Ref: docs.documentos.creado_por > sec.usuarios.id_usuario
+Ref: docs.documentos.id_tipo_documento > docs.tipos_documento.id_tipo_documento
+Ref: docs.documentos.id_area_propietaria > org.areas.id_area
+Ref: docs.versiones_documento.creado_por > sec.usuarios.id_usuario
+Ref: docs.versiones_documento.id_documento > docs.documentos.id_documento
+Ref: org.miembros_area.id_area > org.areas.id_area
+Ref: org.miembros_area.id_usuario > sec.usuarios.id_usuario
+Ref: req.adjuntos_pedido.id_historial > req.historial_pedido.id_historial
+Ref: req.adjuntos_pedido.id_pedido > req.pedidos.id_pedido
+Ref: req.adjuntos_pedido.cargado_por > sec.usuarios.id_usuario
+Ref: req.avisos_slack.id_area_destino > org.areas.id_area
+Ref: req.avisos_slack.id_pedido > req.pedidos.id_pedido
+Ref: req.detalles_pedido.id_pedido > req.pedidos.id_pedido
+Ref: req.historial_pedido.modificado_por > sec.usuarios.id_usuario
+Ref: req.historial_pedido.id_pedido > req.pedidos.id_pedido
+Ref: req.pedidos.atendido_por > sec.usuarios.id_usuario
+Ref: req.pedidos.documento_relacionado > docs.documentos.id_documento
+Ref: req.pedidos.area_origen > org.areas.id_area
+Ref: req.pedidos.solicitado_por > sec.usuarios.id_usuario
+Ref: req.pedidos.area_destino > org.areas.id_area
+Ref: sec.intentos_login.id_usuario > sec.usuarios.id_usuario
+Ref: sec.roles_permisos.id_permiso > sec.permisos.id_permiso
+Ref: sec.roles_permisos.id_rol > sec.roles.id_rol
+Ref: sec.sesiones_usuario.id_usuario > sec.usuarios.id_usuario
+Ref: sec.tokens_acceso.id_usuario > sec.usuarios.id_usuario
+Ref: sec.usuarios.id_area > org.areas.id_area
+Ref: sec.usuarios.creado_por > sec.usuarios.id_usuario
+Ref: sec.usuarios_roles.id_rol > sec.roles.id_rol
+Ref: sec.usuarios_roles.id_usuario > sec.usuarios.id_usuario
+
+// ==========================================
+// ESQUEMA TI: 100% TechDesk (Activos, SLAs y Mantenimiento)
+// ==========================================
+
+Table ti.activos {
+  id_activo bigint [not null, pk]
+  codigo_patrimonial varchar(50) [not null, unique]
+  numero_serie varchar(100)
+  nombre varchar(180) [not null]
+  tipo varchar(50) [not null]
+  marca varchar(80) [not null]
+  modelo varchar(100) [not null]
+  especificaciones jsonb
+  estado varchar(30) [not null]
+  condicion_fisica varchar(30) [not null]
+  ubicacion varchar(150)
+  fecha_adquisicion date
+  costo_adquisicion numeric(12,2)
+  vida_util_meses integer [not null]
+  notas text
+  creado_por integer
+  creado_en timestamptz [not null]
+  actualizado_en timestamptz [not null]
+}
+
+Table ti.asignaciones_activo {
+  id_asignacion bigint [not null, pk]
+  id_activo bigint [not null]
+  id_usuario_asignado integer [not null]
+  id_area_destino bigint
+  id_pedido bigint
+  asignado_por integer
+  fecha_asignacion timestamptz [not null]
+  fecha_devolucion_estimada date
+  fecha_devolucion_real timestamptz
+  estado varchar(30) [not null]
+  condicion_entrega varchar(100) [not null]
+  condicion_devolucion varchar(100)
+  observaciones_entrega text
+  observaciones_devolucion text
+  recibido_por integer
+  creado_en timestamptz [not null]
+  actualizado_en timestamptz [not null]
+}
+
+Table ti.mantenimientos_activo {
+  id_mantenimiento bigint [not null, pk]
+  id_activo bigint [not null]
+  tipo_mantenimiento varchar(30) [not null]
+  titulo varchar(200) [not null]
+  descripcion_falla text
+  diagnostico_solucion text
+  piezas_reemplazadas text
+  costo numeric(10,2) [not null]
+  tecnico_responsable varchar(150) [not null]
+  realizado_por integer
+  estado varchar(30) [not null]
+  fecha_programada date [not null]
+  fecha_ejecucion timestamptz
+  proximo_mantenimiento_sugerido date
+  observaciones text
+  creado_en timestamptz [not null]
+  actualizado_en timestamptz [not null]
+}
+
+Table ti.politicas_sla {
+  id_politica integer [not null, pk]
+  nombre varchar(100) [not null]
+  categoria varchar(50)
+  prioridad varchar(30) [not null]
+  tiempo_primera_respuesta_horas numeric(6,2) [not null]
+  tiempo_resolucion_horas numeric(6,2) [not null]
+  activo boolean [not null]
+  descripcion text
+  creado_en timestamptz [not null]
+}
+
+Table ti.metricas_sla_pedido {
+  id_metrica bigint [not null, pk]
+  id_pedido bigint [not null, unique]
+  id_politica integer
+  tiempo_primera_respuesta_minutos integer
+  tiempo_resolucion_minutos integer
+  fecha_limite_sla timestamptz [not null]
+  cumplio_sla boolean
+  estado_sla varchar(30) [not null]
+  alerta_enviada boolean [not null]
+  calculado_en timestamptz [not null]
+  actualizado_en timestamptz [not null]
+}
+
+Ref: ti.activos.creado_por > sec.usuarios.id_usuario
+Ref: ti.asignaciones_activo.id_activo > ti.activos.id_activo
+Ref: ti.asignaciones_activo.id_usuario_asignado > sec.usuarios.id_usuario
+Ref: ti.asignaciones_activo.id_area_destino > org.areas.id_area
+Ref: ti.asignaciones_activo.id_pedido > req.pedidos.id_pedido
+Ref: ti.asignaciones_activo.asignado_por > sec.usuarios.id_usuario
+Ref: ti.asignaciones_activo.recibido_por > sec.usuarios.id_usuario
+Ref: ti.mantenimientos_activo.id_activo > ti.activos.id_activo
+Ref: ti.mantenimientos_activo.realizado_por > sec.usuarios.id_usuario
+Ref: ti.metricas_sla_pedido.id_pedido > req.pedidos.id_pedido
+Ref: ti.metricas_sla_pedido.id_politica > ti.politicas_sla.id_politica
+

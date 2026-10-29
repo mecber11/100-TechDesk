@@ -1,0 +1,206 @@
+// SIGECO - Diagrama funcional en español
+// Vista explicativa del modelo operativo. Los nombres físicos reales están en ERD_NexusAdmin.dbml.
+
+Table USUARIOS {
+  id_usuario integer [pk, note: 'sec.users.user_id']
+  correo varchar [unique, not null, note: 'email']
+  contrasena varchar [not null, note: 'password_hash']
+  nombre_completo varchar [not null, note: 'full_name']
+  telefono varchar
+  tema_preferido varchar
+  activo boolean [not null, note: 'is_active']
+  cambiar_contrasena boolean [not null, note: 'must_change_password']
+  estado varchar [not null, note: 'status']
+  area_solicitada varchar [note: 'requested_area']
+  id_area bigint [note: 'area_id']
+  ultimo_ingreso timestamptz [note: 'last_login_at']
+  fecha_creacion timestamptz [note: 'created_at']
+  creado_por integer [note: 'created_by_user_id']
+}
+
+Table ROLES {
+  id_rol integer [pk, note: 'sec.roles.role_id']
+  nombre varchar [unique, not null]
+  descripcion varchar
+  es_sistema boolean [not null, note: 'is_system']
+  activo boolean [not null, note: 'is_active']
+}
+
+Table PERMISOS {
+  id_permiso integer [pk, note: 'sec.permissions.permission_id']
+  codigo varchar [unique, not null]
+  modulo varchar [not null]
+  descripcion varchar
+}
+
+Table USUARIOS_ROLES {
+  id_usuario integer [pk, note: 'sec.user_roles.user_id']
+  id_rol integer [pk, note: 'sec.user_roles.role_id']
+  asignado_en timestamptz
+}
+
+Table ROLES_PERMISOS {
+  id_rol integer [pk, note: 'sec.role_permissions.role_id']
+  id_permiso integer [pk, note: 'sec.role_permissions.permission_id']
+}
+
+Table SESIONES_USUARIO {
+  id_sesion uuid [pk, note: 'sec.user_sessions.session_id']
+  id_usuario integer [not null]
+  inicio timestamptz
+  fin timestamptz
+  direccion_ip varchar
+  agente_usuario varchar
+}
+
+Table TOKENS_ACCESO {
+  id_token bigint [pk, note: 'sec.refresh_tokens.refresh_token_id']
+  id_usuario integer [not null]
+  hash_token char
+  expira_en timestamptz
+  revocado_en timestamptz
+  creado_en timestamptz
+}
+
+Table INTENTOS_LOGIN {
+  id_intento bigint [pk, note: 'sec.login_attempts.attempt_id']
+  correo varchar [not null]
+  exitoso boolean [not null]
+  direccion_ip varchar
+  realizado_en timestamptz
+}
+
+Table AREAS {
+  id_area bigint [pk, note: 'org.internal_areas.area_id']
+  codigo varchar [unique]
+  nombre varchar [not null]
+  finalidad varchar
+  orden integer
+  activa boolean [not null]
+}
+
+Table MIEMBROS_AREA {
+  id_area bigint [pk]
+  id_usuario integer [pk]
+  es_encargado boolean [not null]
+  ingresado_en timestamptz
+}
+
+Table PEDIDOS {
+  id_pedido bigint [pk, note: 'req.internal_orders.order_id']
+  codigo_pedido varchar [unique]
+  area_origen bigint [not null]
+  area_destino bigint [not null]
+  solicitado_por integer
+  atendido_por integer
+  documento_relacionado bigint
+  tipo_solicitud varchar
+  titulo varchar [not null]
+  descripcion text [not null]
+  categoria varchar
+  prioridad varchar
+  estado varchar [not null]
+  fecha_limite date
+  respuesta varchar
+  motivo_escalamiento varchar
+  fecha_escalamiento timestamptz
+  fecha_atencion timestamptz
+  fecha_cierre timestamptz
+  creado_en timestamptz
+  actualizado_en timestamptz
+}
+
+Table HISTORIAL_PEDIDO {
+  id_historial bigint [pk]
+  id_pedido bigint [not null]
+  estado_anterior varchar
+  estado_nuevo varchar [not null]
+  observacion text
+  modificado_por integer
+  modificado_en timestamptz
+}
+
+Table DETALLES_PEDIDO {
+  id_detalle bigint [pk]
+  id_pedido bigint [not null]
+  descripcion varchar [not null]
+  cantidad decimal
+  unidad varchar
+  notas varchar
+}
+
+Table ADJUNTOS_PEDIDO {
+  id_adjunto bigint [pk]
+  id_pedido bigint [not null]
+  id_historial bigint
+  cargado_por integer
+  origen_archivo varchar
+  nombre_original varchar [not null]
+  tipo_archivo varchar
+  tamano_bytes bigint
+  disco varchar
+  ruta varchar
+  enlace_externo varchar
+  creado_en timestamptz
+}
+
+Table TIPOS_DOCUMENTO {
+  id_tipo_documento smallint [pk]
+  codigo varchar [unique, not null]
+  nombre varchar [not null]
+}
+
+Table DOCUMENTOS {
+  id_documento bigint [pk]
+  codigo varchar [unique, not null]
+  titulo varchar [not null]
+  id_tipo_documento smallint [not null]
+  id_area_propietaria bigint [not null]
+  estado varchar [not null]
+  resumen varchar
+  contenido text
+  enlace_archivo varchar
+  version_actual integer [not null]
+  vigente_desde date
+  vigente_hasta date
+  creado_por integer
+  creado_en timestamptz
+  actualizado_en timestamptz
+}
+
+Table VERSIONES_DOCUMENTO {
+  id_version bigint [pk]
+  id_documento bigint [not null]
+  numero_version integer [not null]
+  contenido text
+  enlace_archivo varchar
+  motivo_cambio varchar
+  creado_por integer
+  creado_en timestamptz
+}
+
+Ref: USUARIOS_ROLES.id_usuario > USUARIOS.id_usuario
+Ref: USUARIOS_ROLES.id_rol > ROLES.id_rol
+Ref: ROLES_PERMISOS.id_rol > ROLES.id_rol
+Ref: ROLES_PERMISOS.id_permiso > PERMISOS.id_permiso
+Ref: SESIONES_USUARIO.id_usuario > USUARIOS.id_usuario
+Ref: TOKENS_ACCESO.id_usuario > USUARIOS.id_usuario
+Ref: USUARIOS.id_area > AREAS.id_area
+Ref: MIEMBROS_AREA.id_area > AREAS.id_area
+Ref: MIEMBROS_AREA.id_usuario > USUARIOS.id_usuario
+Ref: PEDIDOS.area_origen > AREAS.id_area
+Ref: PEDIDOS.area_destino > AREAS.id_area
+Ref: PEDIDOS.solicitado_por > USUARIOS.id_usuario
+Ref: PEDIDOS.atendido_por > USUARIOS.id_usuario
+Ref: PEDIDOS.documento_relacionado > DOCUMENTOS.id_documento
+Ref: HISTORIAL_PEDIDO.id_pedido > PEDIDOS.id_pedido
+Ref: HISTORIAL_PEDIDO.modificado_por > USUARIOS.id_usuario
+Ref: DETALLES_PEDIDO.id_pedido > PEDIDOS.id_pedido
+Ref: ADJUNTOS_PEDIDO.id_pedido > PEDIDOS.id_pedido
+Ref: ADJUNTOS_PEDIDO.id_historial > HISTORIAL_PEDIDO.id_historial
+Ref: ADJUNTOS_PEDIDO.cargado_por > USUARIOS.id_usuario
+Ref: DOCUMENTOS.id_tipo_documento > TIPOS_DOCUMENTO.id_tipo_documento
+Ref: DOCUMENTOS.id_area_propietaria > AREAS.id_area
+Ref: DOCUMENTOS.creado_por > USUARIOS.id_usuario
+Ref: VERSIONES_DOCUMENTO.id_documento > DOCUMENTOS.id_documento
+Ref: VERSIONES_DOCUMENTO.creado_por > USUARIOS.id_usuario

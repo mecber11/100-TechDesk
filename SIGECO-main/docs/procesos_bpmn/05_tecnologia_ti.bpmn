@@ -1,0 +1,147 @@
+<?xml version='1.0' encoding='utf-8'?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_05_tecnologia_ti" targetNamespace="https://nexusadmin.local/bpmn" exporter="SIGECO BPMN 2.0">
+  <bpmn:process id="Process_05_tecnologia_ti" name="Proceso del área de Tecnología TI" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_05_tecnologia_ti">
+      <bpmn:lane id="Lane_0" name="TI">
+        <bpmn:flowNodeRef>inicio</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>revisar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>tomar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>decision</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>resolver</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>escalar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fin_ti</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_1" name="SuperAdmin">
+        <bpmn:flowNodeRef>super</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fin_super</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="inicio" name="Recibe solicitud de área">
+      <bpmn:outgoing>Flow_0</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="revisar" name="Revisa prioridad y categoría">
+      <bpmn:incoming>Flow_0</bpmn:incoming>
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="tomar" name="Asume atención">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="decision" name="¿Puede resolver?">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="resolver" name="Atiende o rechaza con nota">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="escalar" name="Escala con motivo">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="fin_ti" name="Atención registrada">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:task id="super" name="Resuelve el escalamiento">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="fin_super" name="Escalamiento resuelto">
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_0" sourceRef="inicio" targetRef="revisar" />
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="revisar" targetRef="tomar" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="tomar" targetRef="decision" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="decision" targetRef="resolver" name="Sí" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="decision" targetRef="escalar" name="No" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="resolver" targetRef="fin_ti" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="escalar" targetRef="super" />
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="super" targetRef="fin_super" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Diagram_05_tecnologia_ti">
+    <bpmndi:BPMNPlane id="Plane_05_tecnologia_ti" bpmnElement="Process_05_tecnologia_ti">
+      <bpmndi:BPMNShape id="Lane_0_di" bpmnElement="Lane_0" isHorizontal="true">
+        <dc:Bounds x="20" y="145" width="1930" height="176" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_1_di" bpmnElement="Lane_1" isHorizontal="true">
+        <dc:Bounds x="20" y="321" width="1930" height="176" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="inicio_di" bpmnElement="inicio">
+        <dc:Bounds x="288.5" y="204.0" width="58" height="58" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="revisar_di" bpmnElement="revisar">
+        <dc:Bounds x="460.0" y="193.0" width="205" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="tomar_di" bpmnElement="tomar">
+        <dc:Bounds x="705.0" y="193.0" width="205" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="decision_di" bpmnElement="decision">
+        <dc:Bounds x="1012.5" y="193.0" width="80" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="resolver_di" bpmnElement="resolver">
+        <dc:Bounds x="1195.0" y="143.0" width="205" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="escalar_di" bpmnElement="escalar">
+        <dc:Bounds x="1195.0" y="248.0" width="205" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="fin_ti_di" bpmnElement="fin_ti">
+        <dc:Bounds x="1513.5" y="154.0" width="58" height="58" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="super_di" bpmnElement="super">
+        <dc:Bounds x="1440.0" y="424.0" width="205" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="fin_super_di" bpmnElement="fin_super">
+        <dc:Bounds x="1758.5" y="435.0" width="58" height="58" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_0_di" bpmnElement="Flow_0">
+        <di:waypoint x="346.5" y="233.0" />
+        <di:waypoint x="403.25" y="233.0" />
+        <di:waypoint x="403.25" y="233.0" />
+        <di:waypoint x="460.0" y="233.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="665.0" y="233.0" />
+        <di:waypoint x="685.0" y="233.0" />
+        <di:waypoint x="685.0" y="233.0" />
+        <di:waypoint x="705.0" y="233.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="910.0" y="233.0" />
+        <di:waypoint x="961.25" y="233.0" />
+        <di:waypoint x="961.25" y="233.0" />
+        <di:waypoint x="1012.5" y="233.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="1092.5" y="233.0" />
+        <di:waypoint x="1156.25" y="233.0" />
+        <di:waypoint x="1156.25" y="183.0" />
+        <di:waypoint x="1195.0" y="183.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="1092.5" y="233.0" />
+        <di:waypoint x="1130.0" y="233.0" />
+        <di:waypoint x="1130.0" y="288.0" />
+        <di:waypoint x="1195.0" y="288.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="1400.0" y="183.0" />
+        <di:waypoint x="1469.25" y="183.0" />
+        <di:waypoint x="1469.25" y="183.0" />
+        <di:waypoint x="1513.5" y="183.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="1400.0" y="288.0" />
+        <di:waypoint x="1406.25" y="288.0" />
+        <di:waypoint x="1406.25" y="464.0" />
+        <di:waypoint x="1440.0" y="464.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7">
+        <di:waypoint x="1645.0" y="464.0" />
+        <di:waypoint x="1688.0" y="464.0" />
+        <di:waypoint x="1688.0" y="464.0" />
+        <di:waypoint x="1758.5" y="464.0" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

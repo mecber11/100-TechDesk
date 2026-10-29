@@ -1,0 +1,137 @@
+<?xml version='1.0' encoding='utf-8'?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_10_asistente_de_tickets" targetNamespace="https://nexusadmin.local/bpmn" exporter="SIGECO BPMN 2.0">
+  <bpmn:process id="Process_10_asistente_de_tickets" name="Asistencia para crear y clasificar tickets" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_10_asistente_de_tickets">
+      <bpmn:lane id="Lane_0" name="Área solicitante">
+        <bpmn:flowNodeRef>inicio</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>revisar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>enviar</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_1" name="SIGECO">
+        <bpmn:flowNodeRef>analizar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>proponer</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>registrar</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_2" name="Área destinataria">
+        <bpmn:flowNodeRef>recibir</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fin</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="inicio" name="Describe una necesidad">
+      <bpmn:outgoing>Flow_0</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="analizar" name="Analiza términos y funciones">
+      <bpmn:incoming>Flow_0</bpmn:incoming>
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="proponer" name="Propone campos y destino">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="revisar" name="Revisa y ajusta la propuesta">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="enviar" name="Confirma el envío">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="registrar" name="Registra y asigna código">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="recibir" name="Recibe el ticket">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="fin" name="Ticket enviado">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_0" sourceRef="inicio" targetRef="analizar" />
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="analizar" targetRef="proponer" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="proponer" targetRef="revisar" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="revisar" targetRef="enviar" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="enviar" targetRef="registrar" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="registrar" targetRef="recibir" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="recibir" targetRef="fin" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Diagram_10_asistente_de_tickets">
+    <bpmndi:BPMNPlane id="Plane_10_asistente_de_tickets" bpmnElement="Process_10_asistente_de_tickets">
+      <bpmndi:BPMNShape id="Lane_0_di" bpmnElement="Lane_0" isHorizontal="true">
+        <dc:Bounds x="20" y="145" width="2175" height="176" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_1_di" bpmnElement="Lane_1" isHorizontal="true">
+        <dc:Bounds x="20" y="321" width="2175" height="176" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_2_di" bpmnElement="Lane_2" isHorizontal="true">
+        <dc:Bounds x="20" y="497" width="2175" height="176" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="inicio_di" bpmnElement="inicio">
+        <dc:Bounds x="288.5" y="204.0" width="58" height="58" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="analizar_di" bpmnElement="analizar">
+        <dc:Bounds x="460.0" y="369.0" width="205" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="proponer_di" bpmnElement="proponer">
+        <dc:Bounds x="705.0" y="369.0" width="205" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="revisar_di" bpmnElement="revisar">
+        <dc:Bounds x="950.0" y="193.0" width="205" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="enviar_di" bpmnElement="enviar">
+        <dc:Bounds x="1195.0" y="193.0" width="205" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="registrar_di" bpmnElement="registrar">
+        <dc:Bounds x="1440.0" y="369.0" width="205" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="recibir_di" bpmnElement="recibir">
+        <dc:Bounds x="1685.0" y="545.0" width="205" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="fin_di" bpmnElement="fin">
+        <dc:Bounds x="2003.5" y="556.0" width="58" height="58" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_0_di" bpmnElement="Flow_0">
+        <di:waypoint x="346.5" y="233.0" />
+        <di:waypoint x="403.25" y="233.0" />
+        <di:waypoint x="403.25" y="409.0" />
+        <di:waypoint x="460.0" y="409.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="665.0" y="409.0" />
+        <di:waypoint x="685.0" y="409.0" />
+        <di:waypoint x="685.0" y="409.0" />
+        <di:waypoint x="705.0" y="409.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="910.0" y="409.0" />
+        <di:waypoint x="930.0" y="409.0" />
+        <di:waypoint x="930.0" y="233.0" />
+        <di:waypoint x="950.0" y="233.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="1155.0" y="233.0" />
+        <di:waypoint x="1175.0" y="233.0" />
+        <di:waypoint x="1175.0" y="233.0" />
+        <di:waypoint x="1195.0" y="233.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="1400.0" y="233.0" />
+        <di:waypoint x="1420.0" y="233.0" />
+        <di:waypoint x="1420.0" y="409.0" />
+        <di:waypoint x="1440.0" y="409.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="1645.0" y="409.0" />
+        <di:waypoint x="1665.0" y="409.0" />
+        <di:waypoint x="1665.0" y="585.0" />
+        <di:waypoint x="1685.0" y="585.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="1890.0" y="585.0" />
+        <di:waypoint x="1946.75" y="585.0" />
+        <di:waypoint x="1946.75" y="585.0" />
+        <di:waypoint x="2003.5" y="585.0" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

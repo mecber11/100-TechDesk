@@ -1,0 +1,14 @@
+{
+  "name": "nexus-admin-root",
+  "version": "1.0.0",
+  "description": "SIGECO - Sistema Integrado de Gestión Corporativa",
+  "scripts": {
+    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\" \"npm run start:scheduler\"",
+    "start:scheduler": "cd backend && php artisan schedule:work",
+    "start:backend": "cd backend && php artisan serve",
+    "start:frontend": "cd frontend && npm run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

@@ -1,0 +1,137 @@
+<?xml version='1.0' encoding='utf-8'?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_03_ventas" targetNamespace="https://nexusadmin.local/bpmn" exporter="SIGECO BPMN 2.0">
+  <bpmn:process id="Process_03_ventas" name="Proceso del área de Ventas" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_03_ventas">
+      <bpmn:lane id="Lane_0" name="Ventas">
+        <bpmn:flowNodeRef>inicio</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>definir</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>solicitar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>validar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>cerrar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fin</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_1" name="SIGECO">
+        <bpmn:flowNodeRef>enrutar</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_2" name="TI">
+        <bpmn:flowNodeRef>resolver</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="inicio" name="Detecta necesidad operativa">
+      <bpmn:outgoing>Flow_0</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="definir" name="Define recurso o acceso requerido">
+      <bpmn:incoming>Flow_0</bpmn:incoming>
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="solicitar" name="Registra ticket con prioridad">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="enrutar" name="Dirige el caso a TI">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="resolver" name="Atiende y registra respuesta">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="validar" name="Verifica el recurso recibido">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="cerrar" name="Cierra el ticket">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="fin" name="Necesidad atendida">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_0" sourceRef="inicio" targetRef="definir" />
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="definir" targetRef="solicitar" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="solicitar" targetRef="enrutar" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="enrutar" targetRef="resolver" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="resolver" targetRef="validar" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="validar" targetRef="cerrar" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="cerrar" targetRef="fin" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Diagram_03_ventas">
+    <bpmndi:BPMNPlane id="Plane_03_ventas" bpmnElement="Process_03_ventas">
+      <bpmndi:BPMNShape id="Lane_0_di" bpmnElement="Lane_0" isHorizontal="true">
+        <dc:Bounds x="20" y="145" width="2175" height="176" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_1_di" bpmnElement="Lane_1" isHorizontal="true">
+        <dc:Bounds x="20" y="321" width="2175" height="176" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_2_di" bpmnElement="Lane_2" isHorizontal="true">
+        <dc:Bounds x="20" y="497" width="2175" height="176" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="inicio_di" bpmnElement="inicio">
+        <dc:Bounds x="288.5" y="204.0" width="58" height="58" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="definir_di" bpmnElement="definir">
+        <dc:Bounds x="460.0" y="193.0" width="205" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="solicitar_di" bpmnElement="solicitar">
+        <dc:Bounds x="705.0" y="193.0" width="205" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="enrutar_di" bpmnElement="enrutar">
+        <dc:Bounds x="950.0" y="369.0" width="205" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="resolver_di" bpmnElement="resolver">
+        <dc:Bounds x="1195.0" y="545.0" width="205" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="validar_di" bpmnElement="validar">
+        <dc:Bounds x="1440.0" y="193.0" width="205" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="cerrar_di" bpmnElement="cerrar">
+        <dc:Bounds x="1685.0" y="193.0" width="205" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="fin_di" bpmnElement="fin">
+        <dc:Bounds x="2003.5" y="204.0" width="58" height="58" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_0_di" bpmnElement="Flow_0">
+        <di:waypoint x="346.5" y="233.0" />
+        <di:waypoint x="403.25" y="233.0" />
+        <di:waypoint x="403.25" y="233.0" />
+        <di:waypoint x="460.0" y="233.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="665.0" y="233.0" />
+        <di:waypoint x="685.0" y="233.0" />
+        <di:waypoint x="685.0" y="233.0" />
+        <di:waypoint x="705.0" y="233.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="910.0" y="233.0" />
+        <di:waypoint x="930.0" y="233.0" />
+        <di:waypoint x="930.0" y="409.0" />
+        <di:waypoint x="950.0" y="409.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="1155.0" y="409.0" />
+        <di:waypoint x="1175.0" y="409.0" />
+        <di:waypoint x="1175.0" y="585.0" />
+        <di:waypoint x="1195.0" y="585.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="1400.0" y="585.0" />
+        <di:waypoint x="1420.0" y="585.0" />
+        <di:waypoint x="1420.0" y="233.0" />
+        <di:waypoint x="1440.0" y="233.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="1645.0" y="233.0" />
+        <di:waypoint x="1665.0" y="233.0" />
+        <di:waypoint x="1665.0" y="233.0" />
+        <di:waypoint x="1685.0" y="233.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="1890.0" y="233.0" />
+        <di:waypoint x="1946.75" y="233.0" />
+        <di:waypoint x="1946.75" y="233.0" />
+        <di:waypoint x="2003.5" y="233.0" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

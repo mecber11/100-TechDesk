@@ -1,0 +1,1204 @@
+// SIGECO: modelo físico obtenido de PostgreSQL. Solo estructura, sin datos.
+// Una instalación y base de datos por empresa. cfg.configuracion_empresa tiene una sola fila (id=1).
+
+Table acad.attendance {
+  attendance_id bigint [not null, pk]
+  session_id integer [not null]
+  enrollment_id integer [not null]
+  status varchar(16) [not null]
+  marked_at timestamptz [not null]
+  marked_by_user_id integer
+  indexes {
+    (session_id, enrollment_id) [unique]
+  }
+}
+
+Table acad.certificate_templates {
+  template_id integer [not null, pk]
+  name varchar(80) [not null]
+  course_type_id smallint
+  html_layout text
+  is_active boolean [not null]
+}
+
+Table acad.certificates {
+  certificate_id integer [not null, pk]
+  enrollment_id integer [not null, unique]
+  template_id integer
+  certificate_code varchar(40) [not null, unique]
+  issued_on date [not null]
+  hours_accredited numeric(6,1) [not null]
+  pdu_hours numeric(6,1)
+  file_url varchar(400)
+  public_verify_url varchar(400)
+  revoked_at timestamptz
+  revoke_reason varchar(200)
+}
+
+Table acad.course_editions {
+  edition_id integer [not null, pk]
+  course_id integer [not null]
+  edition_code varchar(40) [not null, unique]
+  modality_id smallint [not null]
+  campus_id integer
+  classroom_id integer
+  starts_on date [not null]
+  ends_on date [not null]
+  enrollment_opens_on date
+  enrollment_closes_on date
+  price_pen numeric(12,2) [not null]
+  max_seats integer [not null]
+  status varchar(20) [not null]
+  meeting_url varchar(400)
+  featured_on_home boolean [not null]
+  notes varchar(400)
+  created_at timestamptz [not null]
+}
+
+Table acad.edition_instructors {
+  edition_id integer [not null]
+  instructor_id integer [not null]
+  is_lead boolean [not null]
+  indexes {
+    (edition_id, instructor_id) [pk]
+  }
+}
+
+Table acad.edition_sessions {
+  session_id integer [not null, pk]
+  edition_id integer [not null]
+  session_number integer [not null]
+  starts_at timestamptz [not null]
+  ends_at timestamptz [not null]
+  topic varchar(200)
+  classroom_id integer
+  meeting_url varchar(400)
+  indexes {
+    (edition_id, session_number) [unique]
+  }
+}
+
+Table acad.enrollment_status_history {
+  history_id bigint [not null, pk]
+  enrollment_id integer [not null]
+  from_status varchar(20)
+  to_status varchar(20) [not null]
+  changed_at timestamptz [not null]
+  changed_by_user_id integer
+  reason varchar(300)
+}
+
+Table acad.enrollments {
+  enrollment_id integer [not null, pk]
+  enrollment_code varchar(30) [not null, unique]
+  student_id integer [not null]
+  edition_id integer [not null]
+  organization_id integer
+  agreement_id integer
+  status varchar(20) [not null]
+  enrolled_at timestamptz [not null]
+  confirmed_at timestamptz
+  completed_at timestamptz
+  attendance_percent numeric(5,2)
+  final_score numeric(5,2)
+  origin varchar(20) [not null]
+  sales_user_id integer
+  notes varchar(400)
+  indexes {
+    (student_id, edition_id) [unique]
+  }
+}
+
+Table acad.evaluations {
+  evaluation_id integer [not null, pk]
+  enrollment_id integer [not null]
+  title varchar(120) [not null]
+  score numeric(5,2) [not null]
+  max_score numeric(5,2) [not null]
+  evaluated_at date [not null]
+}
+
+Table acad.students {
+  student_id integer [not null, pk]
+  document_type_id smallint [not null]
+  document_number varchar(20) [not null]
+  first_name varchar(80) [not null]
+  last_name varchar(80) [not null]
+  email citext [not null, unique]
+  phone varchar(20)
+  profession varchar(120)
+  specialty varchar(120)
+  city varchar(80)
+  department varchar(80)
+  organization_id integer
+  user_id integer
+  marketing_opt_in boolean [not null]
+  created_at timestamptz [not null]
+  is_active boolean [not null]
+  indexes {
+    (document_type_id, document_number) [unique]
+  }
+}
+
+Table anl.audit_logs {
+  audit_log_id bigint [not null, pk]
+  actor_user_id integer
+  action varchar(40) [not null]
+  entity varchar(60) [not null]
+  entity_id varchar(40)
+  before_json jsonb
+  after_json jsonb
+  ip_address varchar(45)
+  user_agent varchar(300)
+  created_at timestamptz [not null]
+}
+
+Table anl.kpi_definitions {
+  kpi_id integer [not null, pk]
+  code varchar(30) [not null, unique]
+  name varchar(160) [not null]
+  unit varchar(20) [not null]
+  period varchar(16) [not null]
+  formula_note varchar(400)
+  target_value numeric(18,4)
+  is_active boolean [not null]
+}
+
+Table anl.kpi_snapshots {
+  snapshot_id bigint [not null, pk]
+  kpi_id integer [not null]
+  captured_at timestamptz [not null]
+  dimension varchar(80)
+  value numeric(18,4) [not null]
+}
+
+Table anl.vw_complaint_sla {
+  complaint_id integer
+  ticket_code varchar(20)
+  kind varchar(16)
+  status varchar(20)
+  created_at timestamptz
+  due_at date
+  answered_at timestamptz
+  met_sla integer
+}
+
+Table anl.vw_edition_seats {
+  edition_id integer
+  edition_code varchar(40)
+  course_title varchar(220)
+  max_seats integer
+  occupied_seats bigint
+  free_seats bigint
+  status varchar(20)
+  starts_on date
+  price_pen numeric(12,2)
+}
+
+Table anl.vw_enrollment_funnel {
+  day date
+  status varchar(20)
+  origin varchar(20)
+  qty bigint
+}
+
+Table anl.vw_lead_funnel {
+  status varchar(20)
+  qty bigint
+}
+
+Table anl.vw_revenue_by_month {
+  month_start date
+  collected_pen numeric
+}
+
+Table anl.vw_student_history {
+  student_id integer
+  document_number varchar(20)
+  first_name varchar(80)
+  last_name varchar(80)
+  email citext
+  enrollment_code varchar(30)
+  status varchar(20)
+  enrolled_at timestamptz
+  origin varchar(20)
+  edition_code varchar(40)
+  course_title varchar(220)
+  attendance_percent numeric(5,2)
+  final_score numeric(5,2)
+  certificate_code varchar(40)
+}
+
+Table cat.accreditation_bodies {
+  body_id integer [not null, pk]
+  code varchar(20) [not null, unique]
+  name varchar(160) [not null]
+  logo_url varchar(400)
+}
+
+Table cat.course_accreditations {
+  course_id integer [not null]
+  body_id integer [not null]
+  credential_note varchar(200)
+  indexes {
+    (course_id, body_id) [pk]
+  }
+}
+
+Table cat.course_areas {
+  course_id integer [not null]
+  area_id integer [not null]
+  indexes {
+    (course_id, area_id) [pk]
+  }
+}
+
+Table cat.course_modules {
+  module_id integer [not null, pk]
+  course_id integer [not null]
+  sort_order integer [not null]
+  title varchar(200) [not null]
+  hours numeric(5,1)
+}
+
+Table cat.course_prerequisites {
+  course_id integer [not null]
+  prerequisite_course_id integer [not null]
+  indexes {
+    (course_id, prerequisite_course_id) [pk]
+  }
+}
+
+Table cat.course_types {
+  course_type_id smallint [not null, pk]
+  code varchar(20) [not null, unique]
+  name varchar(80) [not null]
+}
+
+Table cat.courses {
+  course_id integer [not null, pk]
+  code varchar(30) [not null, unique]
+  slug varchar(180) [not null, unique]
+  title varchar(220) [not null]
+  short_description varchar(400)
+  long_description text
+  course_type_id smallint [not null]
+  default_modality_id smallint [not null]
+  duration_hours numeric(6,1) [not null]
+  duration_weeks smallint
+  base_price_pen numeric(12,2) [not null]
+  compare_at_price_pen numeric(12,2)
+  grants_certificate boolean [not null]
+  pdu_hours numeric(6,1)
+  autodesk_official boolean [not null]
+  featured_on_home boolean [not null]
+  min_enrollment integer [not null]
+  max_enrollment integer [not null]
+  is_published boolean [not null]
+  is_active boolean [not null]
+  created_at timestamptz [not null]
+}
+
+Table cat.knowledge_areas {
+  area_id integer [not null, pk]
+  code varchar(20) [not null, unique]
+  name varchar(120) [not null]
+  sort_order integer [not null]
+  is_active boolean [not null]
+}
+
+Table cat.modalities {
+  modality_id smallint [not null, pk]
+  code varchar(20) [not null, unique]
+  name varchar(80) [not null]
+}
+
+Table cfg.app_settings {
+  setting_key varchar(80) [not null, pk]
+  setting_value text [not null]
+  description varchar(200)
+  updated_at timestamptz [not null]
+  updated_by_user_id integer
+}
+
+Table cfg.configuracion_empresa {
+  id smallint [not null, pk]
+  nombre_empresa varchar(160) [not null]
+  ia_habilitada boolean [not null]
+  documentos_habilitados boolean [not null]
+  slack_habilitado boolean [not null]
+  actualizado_en timestamp
+}
+
+Table cfg.currencies {
+  currency_code char(3) [not null, pk]
+  name varchar(40) [not null]
+  symbol varchar(8) [not null]
+}
+
+Table cfg.document_types {
+  document_type_id smallint [not null, pk]
+  code varchar(10) [not null, unique]
+  name varchar(80) [not null]
+  is_for_person boolean [not null]
+  is_for_organization boolean [not null]
+}
+
+Table cfg.historial_configuracion {
+  id_cambio bigint [not null, pk]
+  id_usuario integer
+  antes jsonb [not null]
+  despues jsonb [not null]
+  creado_en timestamp [not null]
+  id_configuracion smallint [not null]
+}
+
+Table cfg.holidays {
+  holiday_date date [not null, pk]
+  name varchar(80) [not null]
+}
+
+Table cfg.theme_tokens {
+  token_key varchar(40) [not null, pk]
+  light_hex char(7) [not null]
+  dark_hex char(7) [not null]
+  description varchar(120)
+}
+
+Table cms.hero_slides {
+  slide_id integer [not null, pk]
+  badge varchar(80)
+  title varchar(200) [not null]
+  subtitle varchar(400)
+  image_url varchar(400)
+  primary_cta varchar(40)
+  primary_url varchar(200)
+  secondary_cta varchar(40)
+  secondary_url varchar(200)
+  sort_order integer [not null]
+  is_active boolean [not null]
+}
+
+Table cms.media_assets {
+  asset_id integer [not null, pk]
+  file_name varchar(200) [not null]
+  url varchar(400) [not null]
+  mime_type varchar(80)
+  uploaded_at timestamptz [not null]
+}
+
+Table cms.pages {
+  page_id integer [not null, pk]
+  slug varchar(80) [not null, unique]
+  title varchar(160) [not null]
+  body_html text
+  is_published boolean [not null]
+}
+
+Table cms.site_stats {
+  stat_key varchar(40) [not null, pk]
+  label varchar(80) [not null]
+  display_value varchar(40) [not null]
+  sort_order integer [not null]
+}
+
+Table cms.testimonials {
+  testimonial_id integer [not null, pk]
+  author_name varchar(160) [not null]
+  author_title varchar(200)
+  quote varchar(800) [not null]
+  photo_url varchar(400)
+  sort_order integer [not null]
+  is_published boolean [not null]
+}
+
+Table crm.campaigns {
+  campaign_id integer [not null, pk]
+  name varchar(160) [not null]
+  channel varchar(30) [not null]
+  starts_on date
+  ends_on date
+  budget_pen numeric(12,2)
+  course_id integer
+  is_active boolean [not null]
+}
+
+Table crm.lead_interactions {
+  interaction_id bigint [not null, pk]
+  lead_id integer [not null]
+  user_id integer
+  channel varchar(20) [not null]
+  happened_at timestamptz [not null]
+  summary varchar(400) [not null]
+  next_follow_up_on date
+}
+
+Table crm.lead_sources {
+  source_id smallint [not null, pk]
+  code varchar(20) [not null, unique]
+  name varchar(80) [not null]
+}
+
+Table crm.lead_status_history {
+  history_id bigint [not null, pk]
+  lead_id integer [not null]
+  from_status varchar(20)
+  to_status varchar(20) [not null]
+  changed_at timestamptz [not null]
+  changed_by_user_id integer
+}
+
+Table crm.leads {
+  lead_id integer [not null, pk]
+  full_name varchar(160) [not null]
+  email varchar(160)
+  phone varchar(20)
+  document_number varchar(20)
+  city varchar(80)
+  profession varchar(120)
+  source_id smallint
+  campaign_id integer
+  course_id integer
+  status varchar(20) [not null]
+  assigned_user_id integer
+  lost_reason varchar(200)
+  created_at timestamptz [not null]
+  converted_student_id integer
+}
+
+Table docs.documentos {
+  id_documento bigint [not null, pk]
+  codigo varchar(40) [not null, unique]
+  titulo varchar(220) [not null]
+  id_tipo_documento smallint [not null]
+  id_area_propietaria bigint [not null]
+  estado varchar(16) [not null]
+  resumen varchar(500)
+  contenido text
+  enlace_archivo varchar(400)
+  version_actual integer [not null]
+  vigente_desde date
+  vigente_hasta date
+  creado_por integer
+  creado_en timestamptz
+  actualizado_en timestamptz
+}
+
+Table docs.tipos_documento {
+  id_tipo_documento smallint [not null, pk]
+  codigo varchar(20) [not null, unique]
+  nombre varchar(80) [not null]
+}
+
+Table docs.versiones_documento {
+  id_version bigint [not null, pk]
+  id_documento bigint [not null]
+  numero_version integer [not null]
+  contenido text
+  enlace_archivo varchar(400)
+  motivo_cambio varchar(300)
+  creado_por integer
+  creado_en timestamptz [not null]
+  indexes {
+    (id_documento, numero_version) [unique]
+  }
+}
+
+Table fin.discount_rules {
+  discount_rule_id integer [not null, pk]
+  code varchar(20) [not null, unique]
+  name varchar(120) [not null]
+  percent numeric(5,2)
+  amount_pen numeric(12,2)
+  valid_from date
+  valid_to date
+  coupon_code varchar(30)
+  requires_agreement boolean [not null]
+  is_active boolean [not null]
+}
+
+Table fin.installments {
+  installment_id integer [not null, pk]
+  enrollment_id integer [not null]
+  sequence_no smallint [not null]
+  due_on date [not null]
+  amount_pen numeric(12,2) [not null]
+  paid_amount_pen numeric(12,2) [not null]
+  status varchar(16) [not null]
+  indexes {
+    (enrollment_id, sequence_no) [unique]
+  }
+}
+
+Table fin.invoice_items {
+  invoice_item_id integer [not null, pk]
+  invoice_id integer [not null]
+  description varchar(220) [not null]
+  quantity numeric(8,2) [not null]
+  unit_price numeric(12,2) [not null]
+  discount_pen numeric(12,2) [not null]
+  line_total numeric(12,2) [not null]
+}
+
+Table fin.invoices {
+  invoice_id integer [not null, pk]
+  invoice_type char(2) [not null]
+  series varchar(4) [not null]
+  number integer [not null]
+  enrollment_id integer
+  organization_id integer
+  student_id integer
+  issue_date date [not null]
+  currency_code char(3) [not null]
+  subtotal numeric(12,2) [not null]
+  igv numeric(12,2) [not null]
+  total numeric(12,2) [not null]
+  status varchar(16) [not null]
+  sunat_status varchar(20)
+  notes varchar(300)
+  created_at timestamptz [not null]
+  indexes {
+    (invoice_type, series, number) [unique]
+  }
+}
+
+Table fin.payment_methods {
+  payment_method_id smallint [not null, pk]
+  code varchar(20) [not null, unique]
+  name varchar(80) [not null]
+  is_active boolean [not null]
+}
+
+Table fin.payments {
+  payment_id integer [not null, pk]
+  invoice_id integer [not null]
+  payment_method_id smallint [not null]
+  paid_at timestamptz [not null]
+  amount_pen numeric(12,2) [not null]
+  reference varchar(80)
+  received_by_user_id integer
+  notes varchar(200)
+}
+
+Table hr.instructor_areas {
+  instructor_id integer [not null]
+  area_id integer [not null]
+  indexes {
+    (instructor_id, area_id) [pk]
+  }
+}
+
+Table hr.instructors {
+  instructor_id integer [not null, pk]
+  public_id uuid [not null, unique]
+  document_type_id smallint [not null]
+  document_number varchar(20) [not null]
+  full_name varchar(160) [not null]
+  professional_title varchar(160)
+  email varchar(160)
+  phone varchar(20)
+  bio text
+  photo_url varchar(400)
+  user_id integer
+  hourly_rate_pen numeric(10,2)
+  is_active boolean [not null]
+  indexes {
+    (document_type_id, document_number) [unique]
+  }
+}
+
+Table ntf.outbox {
+  outbox_id bigint [not null, pk]
+  template_id integer
+  channel varchar(16) [not null]
+  to_address varchar(200) [not null]
+  payload_json jsonb
+  status varchar(16) [not null]
+  created_at timestamptz [not null]
+  sent_at timestamptz
+  error varchar(400)
+}
+
+Table ntf.templates {
+  template_id integer [not null, pk]
+  code varchar(40) [not null, unique]
+  channel varchar(16) [not null]
+  subject varchar(160)
+  body text [not null]
+  is_active boolean [not null]
+}
+
+Table org.agreements {
+  agreement_id integer [not null, pk]
+  organization_id integer [not null]
+  code varchar(30) [not null, unique]
+  title varchar(200) [not null]
+  kind varchar(20) [not null]
+  starts_on date [not null]
+  ends_on date
+  discount_percent numeric(5,2) [not null]
+  notes varchar(500)
+  show_on_home boolean [not null]
+  is_active boolean [not null]
+}
+
+Table org.areas {
+  id_area bigint [not null, pk]
+  nombre varchar(255) [not null]
+  activa boolean [not null]
+  codigo varchar(20) [unique]
+  finalidad varchar(300)
+  orden integer [not null]
+}
+
+Table org.campuses {
+  campus_id integer [not null, pk]
+  code varchar(20) [not null, unique]
+  name varchar(120) [not null]
+  address varchar(200)
+  city varchar(80)
+  department varchar(80)
+  phone varchar(20)
+  is_active boolean [not null]
+}
+
+Table org.classrooms {
+  classroom_id integer [not null, pk]
+  campus_id integer [not null]
+  name varchar(80) [not null]
+  capacity integer [not null]
+  is_virtual boolean [not null]
+  meeting_url varchar(400)
+}
+
+Table org.miembros_area {
+  id_area bigint [not null]
+  id_usuario integer [not null]
+  es_encargado boolean [not null]
+  ingresado_en timestamptz [not null]
+  indexes {
+    (id_area, id_usuario) [pk]
+  }
+}
+
+Table org.organization_contacts {
+  contact_id integer [not null, pk]
+  organization_id integer [not null]
+  full_name varchar(160) [not null]
+  job_title varchar(80)
+  email varchar(160)
+  phone varchar(20)
+  is_primary boolean [not null]
+}
+
+Table org.organizations {
+  organization_id integer [not null, pk]
+  document_type_id smallint [not null]
+  tax_id varchar(20) [not null, unique]
+  legal_name varchar(200) [not null]
+  trade_name varchar(200)
+  sector varchar(80)
+  city varchar(80)
+  email varchar(160)
+  phone varchar(20)
+  show_on_home boolean [not null]
+  is_active boolean [not null]
+  created_at timestamptz [not null]
+}
+
+Table public.cache {
+  key varchar(255) [not null, pk]
+  value text [not null]
+  expiration integer [not null]
+}
+
+Table public.cache_locks {
+  key varchar(255) [not null, pk]
+  owner varchar(255) [not null]
+  expiration integer [not null]
+}
+
+Table public.failed_jobs {
+  id bigint [not null, pk]
+  uuid varchar(255) [not null, unique]
+  connection text [not null]
+  queue text [not null]
+  payload text [not null]
+  exception text [not null]
+  failed_at timestamp [not null]
+}
+
+Table public.job_batches {
+  id varchar(255) [not null, pk]
+  name varchar(255) [not null]
+  total_jobs integer [not null]
+  pending_jobs integer [not null]
+  failed_jobs integer [not null]
+  failed_job_ids text [not null]
+  options text
+  cancelled_at integer
+  created_at integer [not null]
+  finished_at integer
+}
+
+Table public.jobs {
+  id bigint [not null, pk]
+  queue varchar(255) [not null]
+  payload text [not null]
+  attempts smallint [not null]
+  reserved_at integer
+  available_at integer [not null]
+  created_at integer [not null]
+}
+
+Table public.migrations {
+  id integer [not null, pk]
+  migration varchar(255) [not null]
+  batch integer [not null]
+}
+
+Table public.model_has_permissions {
+  permission_id bigint [not null]
+  model_type varchar(255) [not null]
+  model_id bigint [not null]
+  indexes {
+    (permission_id, model_id, model_type) [pk]
+  }
+}
+
+Table public.model_has_roles {
+  role_id bigint [not null]
+  model_type varchar(255) [not null]
+  model_id bigint [not null]
+  indexes {
+    (role_id, model_id, model_type) [pk]
+  }
+}
+
+Table public.password_reset_tokens {
+  email varchar(255) [not null, pk]
+  token varchar(255) [not null]
+  created_at timestamp
+}
+
+Table public.permissions {
+  id bigint [not null, pk]
+  name varchar(255) [not null]
+  guard_name varchar(255) [not null]
+  created_at timestamp
+  updated_at timestamp
+  indexes {
+    (name, guard_name) [unique]
+  }
+}
+
+Table public.role_has_permissions {
+  permission_id bigint [not null]
+  role_id bigint [not null]
+  indexes {
+    (permission_id, role_id) [pk]
+  }
+}
+
+Table public.roles {
+  id bigint [not null, pk]
+  name varchar(255) [not null]
+  guard_name varchar(255) [not null]
+  created_at timestamp
+  updated_at timestamp
+  indexes {
+    (name, guard_name) [unique]
+  }
+}
+
+Table public.sessions {
+  id varchar(255) [not null, pk]
+  user_id bigint
+  ip_address varchar(45)
+  user_agent text
+  payload text [not null]
+  last_activity integer [not null]
+}
+
+Table public.users {
+  id bigint [not null, pk]
+  name varchar(255) [not null]
+  email varchar(255) [not null, unique]
+  email_verified_at timestamp
+  password varchar(255) [not null]
+  remember_token varchar(100)
+  created_at timestamp
+  updated_at timestamp
+  status varchar(255) [not null]
+  requested_area varchar(255)
+}
+
+Table qms.complaint_history {
+  history_id bigint [not null, pk]
+  complaint_id integer [not null]
+  from_status varchar(20)
+  to_status varchar(20) [not null]
+  changed_at timestamptz [not null]
+  changed_by_user_id integer
+  note varchar(400)
+}
+
+Table qms.complaints {
+  complaint_id integer [not null, pk]
+  ticket_code varchar(20) [not null, unique]
+  kind varchar(16) [not null]
+  consumer_name varchar(160) [not null]
+  document_number varchar(20)
+  email varchar(160)
+  phone varchar(20)
+  address varchar(200)
+  good_description varchar(300) [not null]
+  claimed_amount_pen numeric(12,2)
+  detail text [not null]
+  occurred_on date
+  enrollment_id integer
+  status varchar(20) [not null]
+  answer text
+  answered_at timestamptz
+  due_at date
+  created_at timestamptz [not null]
+}
+
+Table qms.survey_answers {
+  answer_id integer [not null, pk]
+  response_id integer [not null]
+  question_id integer [not null]
+  numeric_value numeric(5,2)
+  text_value varchar(500)
+}
+
+Table qms.survey_questions {
+  question_id integer [not null, pk]
+  survey_id integer [not null]
+  sort_order integer [not null]
+  prompt varchar(300) [not null]
+  kind varchar(16) [not null]
+}
+
+Table qms.survey_responses {
+  response_id integer [not null, pk]
+  survey_id integer [not null]
+  enrollment_id integer
+  instructor_id integer
+  submitted_at timestamptz [not null]
+}
+
+Table qms.surveys {
+  survey_id integer [not null, pk]
+  name varchar(160) [not null]
+  scope varchar(20) [not null]
+  is_active boolean [not null]
+}
+
+Table req.adjuntos_pedido {
+  id_adjunto bigint [not null, pk]
+  id_pedido bigint [not null]
+  id_historial bigint
+  cargado_por integer
+  origen_archivo varchar(20) [not null]
+  nombre_original varchar(255) [not null]
+  tipo_archivo varchar(120)
+  tamano_bytes bigint
+  disco varchar(40)
+  ruta varchar(500)
+  enlace_externo varchar(1000)
+  creado_en timestamptz [not null]
+}
+
+Table req.avisos_slack {
+  id_aviso bigint [not null, pk]
+  id_pedido bigint [not null]
+  id_area_destino bigint [not null]
+  evento varchar(40) [not null]
+  estado varchar(20) [not null]
+  slack_destinatario varchar(30)
+  error varchar(250)
+  intentos integer [not null]
+  reintentar_en timestamp
+  bloqueado_hasta timestamp
+  enviado_en timestamp
+  creado_en timestamp [not null]
+  indexes {
+    (id_pedido, evento) [unique]
+  }
+}
+
+Table req.detalles_pedido {
+  id_detalle bigint [not null, pk]
+  id_pedido bigint [not null]
+  descripcion varchar(220) [not null]
+  cantidad numeric(10,2)
+  unidad varchar(20)
+  notas varchar(200)
+}
+
+Table req.historial_pedido {
+  id_historial bigint [not null, pk]
+  id_pedido bigint [not null]
+  estado varchar(255) [not null]
+  observacion text
+  modificado_por bigint
+  modificado_en timestamp [not null]
+  estado_anterior varchar(20)
+  estado_nuevo varchar(20)
+}
+
+Table req.pedidos {
+  id_pedido bigint [not null, pk]
+  area_origen bigint [not null]
+  area_destino bigint [not null]
+  solicitado_por bigint
+  documento_relacionado bigint
+  titulo varchar(200) [not null]
+  descripcion text [not null]
+  categoria varchar(255)
+  prioridad varchar(255)
+  estado varchar(255) [not null]
+  fecha_limite date
+  creado_en timestamp
+  actualizado_en timestamp
+  codigo_pedido varchar(30) [unique]
+  tipo_solicitud varchar(16) [not null]
+  respuesta varchar(500)
+  atendido_por integer
+  motivo_escalamiento varchar(500)
+  fecha_escalamiento timestamptz
+  fecha_atencion timestamptz
+  fecha_cierre timestamptz
+  nombre_solicitante text
+  correo_solicitante text
+}
+
+Table sec.intentos_login {
+  id_intento bigint [not null, pk]
+  correo citext [not null]
+  exitoso boolean [not null]
+  direccion_ip varchar(45)
+  realizado_en timestamptz [not null]
+  id_usuario integer
+}
+
+Table sec.permisos {
+  id_permiso integer [not null, pk]
+  codigo varchar(80) [not null, unique]
+  modulo varchar(40) [not null]
+  descripcion varchar(200)
+}
+
+Table sec.roles {
+  id_rol integer [not null, pk]
+  nombre varchar(60) [not null, unique]
+  descripcion varchar(200)
+  es_sistema boolean [not null]
+  activo boolean [not null]
+}
+
+Table sec.roles_permisos {
+  id_rol integer [not null]
+  id_permiso integer [not null]
+  indexes {
+    (id_rol, id_permiso) [pk]
+  }
+}
+
+Table sec.sesiones_usuario {
+  id_sesion uuid [not null, pk]
+  id_usuario integer [not null]
+  inicio timestamptz [not null]
+  fin timestamptz
+  direccion_ip varchar(45)
+  agente_usuario varchar(300)
+}
+
+Table sec.tokens_acceso {
+  id_token bigint [not null, pk]
+  id_usuario integer [not null]
+  hash_token char(64) [not null]
+  expira_en timestamptz [not null]
+  revocado_en timestamptz
+  creado_en timestamptz [not null]
+}
+
+Table sec.usuarios {
+  id_usuario integer [not null, pk]
+  correo citext [not null, unique]
+  contrasena varchar(256) [not null]
+  nombre_completo varchar(160) [not null]
+  telefono varchar(20)
+  tema_preferido varchar(10) [not null]
+  activo boolean [not null]
+  cambiar_contrasena boolean [not null]
+  ultimo_ingreso timestamptz
+  creado_en timestamptz [not null]
+  creado_por integer
+  estado varchar(255) [not null]
+  area_solicitada varchar(255)
+  id_area bigint
+  suspendido_en timestamp
+  slack_user_id varchar(30) [unique]
+}
+
+Table sec.usuarios_roles {
+  id_usuario integer [not null]
+  id_rol integer [not null]
+  asignado_en timestamptz [not null]
+  indexes {
+    (id_usuario, id_rol) [pk]
+  }
+}
+
+Table shop.cart_items {
+  cart_item_id integer [not null, pk]
+  cart_id uuid [not null]
+  edition_id integer [not null]
+  quantity smallint [not null]
+}
+
+Table shop.carts {
+  cart_id uuid [not null, pk]
+  student_id integer
+  session_key varchar(64)
+  created_at timestamptz [not null]
+}
+
+Table shop.web_order_items {
+  order_item_id integer [not null, pk]
+  order_id integer [not null]
+  edition_id integer [not null]
+  enrollment_id integer
+  unit_price_pen numeric(12,2) [not null]
+}
+
+Table shop.web_orders {
+  order_id integer [not null, pk]
+  order_code varchar(30) [not null, unique]
+  student_id integer [not null]
+  status varchar(20) [not null]
+  coupon_code varchar(30)
+  subtotal_pen numeric(12,2) [not null]
+  discount_pen numeric(12,2) [not null]
+  total_pen numeric(12,2) [not null]
+  created_at timestamptz [not null]
+  paid_at timestamptz
+}
+
+Ref: acad.attendance.enrollment_id > acad.enrollments.enrollment_id
+Ref: acad.attendance.marked_by_user_id > sec.usuarios.id_usuario
+Ref: acad.attendance.session_id > acad.edition_sessions.session_id
+Ref: acad.certificate_templates.course_type_id > cat.course_types.course_type_id
+Ref: acad.certificates.enrollment_id > acad.enrollments.enrollment_id
+Ref: acad.certificates.template_id > acad.certificate_templates.template_id
+Ref: acad.course_editions.campus_id > org.campuses.campus_id
+Ref: acad.course_editions.classroom_id > org.classrooms.classroom_id
+Ref: acad.course_editions.course_id > cat.courses.course_id
+Ref: acad.course_editions.modality_id > cat.modalities.modality_id
+Ref: acad.edition_instructors.edition_id > acad.course_editions.edition_id
+Ref: acad.edition_instructors.instructor_id > hr.instructors.instructor_id
+Ref: acad.edition_sessions.classroom_id > org.classrooms.classroom_id
+Ref: acad.edition_sessions.edition_id > acad.course_editions.edition_id
+Ref: acad.enrollment_status_history.changed_by_user_id > sec.usuarios.id_usuario
+Ref: acad.enrollment_status_history.enrollment_id > acad.enrollments.enrollment_id
+Ref: acad.enrollments.agreement_id > org.agreements.agreement_id
+Ref: acad.enrollments.edition_id > acad.course_editions.edition_id
+Ref: acad.enrollments.organization_id > org.organizations.organization_id
+Ref: acad.enrollments.sales_user_id > sec.usuarios.id_usuario
+Ref: acad.enrollments.student_id > acad.students.student_id
+Ref: acad.evaluations.enrollment_id > acad.enrollments.enrollment_id
+Ref: acad.students.document_type_id > cfg.document_types.document_type_id
+Ref: acad.students.organization_id > org.organizations.organization_id
+Ref: acad.students.user_id > sec.usuarios.id_usuario
+Ref: anl.audit_logs.actor_user_id > sec.usuarios.id_usuario
+Ref: anl.kpi_snapshots.kpi_id > anl.kpi_definitions.kpi_id
+Ref: cat.course_accreditations.body_id > cat.accreditation_bodies.body_id
+Ref: cat.course_accreditations.course_id > cat.courses.course_id
+Ref: cat.course_areas.area_id > cat.knowledge_areas.area_id
+Ref: cat.course_areas.course_id > cat.courses.course_id
+Ref: cat.course_modules.course_id > cat.courses.course_id
+Ref: cat.course_prerequisites.course_id > cat.courses.course_id
+Ref: cat.course_prerequisites.prerequisite_course_id > cat.courses.course_id
+Ref: cat.courses.course_type_id > cat.course_types.course_type_id
+Ref: cat.courses.default_modality_id > cat.modalities.modality_id
+Ref: cfg.historial_configuracion.id_usuario > sec.usuarios.id_usuario
+Ref: cfg.historial_configuracion.id_configuracion > cfg.configuracion_empresa.id
+Ref: crm.campaigns.course_id > cat.courses.course_id
+Ref: crm.lead_interactions.lead_id > crm.leads.lead_id
+Ref: crm.lead_interactions.user_id > sec.usuarios.id_usuario
+Ref: crm.lead_status_history.changed_by_user_id > sec.usuarios.id_usuario
+Ref: crm.lead_status_history.lead_id > crm.leads.lead_id
+Ref: crm.leads.assigned_user_id > sec.usuarios.id_usuario
+Ref: crm.leads.campaign_id > crm.campaigns.campaign_id
+Ref: crm.leads.converted_student_id > acad.students.student_id
+Ref: crm.leads.course_id > cat.courses.course_id
+Ref: crm.leads.source_id > crm.lead_sources.source_id
+Ref: docs.documentos.creado_por > sec.usuarios.id_usuario
+Ref: docs.documentos.id_tipo_documento > docs.tipos_documento.id_tipo_documento
+Ref: docs.documentos.id_area_propietaria > org.areas.id_area
+Ref: docs.versiones_documento.creado_por > sec.usuarios.id_usuario
+Ref: docs.versiones_documento.id_documento > docs.documentos.id_documento
+Ref: fin.installments.enrollment_id > acad.enrollments.enrollment_id
+Ref: fin.invoice_items.invoice_id > fin.invoices.invoice_id
+Ref: fin.invoices.currency_code > cfg.currencies.currency_code
+Ref: fin.invoices.enrollment_id > acad.enrollments.enrollment_id
+Ref: fin.invoices.organization_id > org.organizations.organization_id
+Ref: fin.invoices.student_id > acad.students.student_id
+Ref: fin.payments.invoice_id > fin.invoices.invoice_id
+Ref: fin.payments.payment_method_id > fin.payment_methods.payment_method_id
+Ref: fin.payments.received_by_user_id > sec.usuarios.id_usuario
+Ref: hr.instructor_areas.area_id > cat.knowledge_areas.area_id
+Ref: hr.instructor_areas.instructor_id > hr.instructors.instructor_id
+Ref: hr.instructors.document_type_id > cfg.document_types.document_type_id
+Ref: hr.instructors.user_id > sec.usuarios.id_usuario
+Ref: ntf.outbox.template_id > ntf.templates.template_id
+Ref: org.agreements.organization_id > org.organizations.organization_id
+Ref: org.classrooms.campus_id > org.campuses.campus_id
+Ref: org.miembros_area.id_area > org.areas.id_area
+Ref: org.miembros_area.id_usuario > sec.usuarios.id_usuario
+Ref: org.organization_contacts.organization_id > org.organizations.organization_id
+Ref: org.organizations.document_type_id > cfg.document_types.document_type_id
+Ref: public.model_has_permissions.permission_id > public.permissions.id
+Ref: public.model_has_roles.role_id > public.roles.id
+Ref: public.role_has_permissions.permission_id > public.permissions.id
+Ref: public.role_has_permissions.role_id > public.roles.id
+Ref: qms.complaint_history.changed_by_user_id > sec.usuarios.id_usuario
+Ref: qms.complaint_history.complaint_id > qms.complaints.complaint_id
+Ref: qms.complaints.enrollment_id > acad.enrollments.enrollment_id
+Ref: qms.survey_answers.question_id > qms.survey_questions.question_id
+Ref: qms.survey_answers.response_id > qms.survey_responses.response_id
+Ref: qms.survey_questions.survey_id > qms.surveys.survey_id
+Ref: qms.survey_responses.enrollment_id > acad.enrollments.enrollment_id
+Ref: qms.survey_responses.instructor_id > hr.instructors.instructor_id
+Ref: qms.survey_responses.survey_id > qms.surveys.survey_id
+Ref: req.adjuntos_pedido.id_historial > req.historial_pedido.id_historial
+Ref: req.adjuntos_pedido.id_pedido > req.pedidos.id_pedido
+Ref: req.adjuntos_pedido.cargado_por > sec.usuarios.id_usuario
+Ref: req.avisos_slack.id_area_destino > org.areas.id_area
+Ref: req.avisos_slack.id_pedido > req.pedidos.id_pedido
+Ref: req.detalles_pedido.id_pedido > req.pedidos.id_pedido
+Ref: req.historial_pedido.modificado_por > sec.usuarios.id_usuario
+Ref: req.historial_pedido.id_pedido > req.pedidos.id_pedido
+Ref: req.pedidos.atendido_por > sec.usuarios.id_usuario
+Ref: req.pedidos.documento_relacionado > docs.documentos.id_documento
+Ref: req.pedidos.area_origen > org.areas.id_area
+Ref: req.pedidos.solicitado_por > sec.usuarios.id_usuario
+Ref: req.pedidos.area_destino > org.areas.id_area
+Ref: sec.intentos_login.id_usuario > sec.usuarios.id_usuario
+Ref: sec.roles_permisos.id_permiso > sec.permisos.id_permiso
+Ref: sec.roles_permisos.id_rol > sec.roles.id_rol
+Ref: sec.sesiones_usuario.id_usuario > sec.usuarios.id_usuario
+Ref: sec.tokens_acceso.id_usuario > sec.usuarios.id_usuario
+Ref: sec.usuarios.id_area > org.areas.id_area
+Ref: sec.usuarios.creado_por > sec.usuarios.id_usuario
+Ref: sec.usuarios_roles.id_rol > sec.roles.id_rol
+Ref: sec.usuarios_roles.id_usuario > sec.usuarios.id_usuario
+Ref: shop.cart_items.cart_id > shop.carts.cart_id
+Ref: shop.cart_items.edition_id > acad.course_editions.edition_id
+Ref: shop.carts.student_id > acad.students.student_id
+Ref: shop.web_order_items.edition_id > acad.course_editions.edition_id
+Ref: shop.web_order_items.enrollment_id > acad.enrollments.enrollment_id
+Ref: shop.web_order_items.order_id > shop.web_orders.order_id
+Ref: shop.web_orders.student_id > acad.students.student_id

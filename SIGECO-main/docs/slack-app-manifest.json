@@ -1,0 +1,23 @@
+{
+  "display_information": {
+    "name": "SIGECO",
+    "description": "Avisos privados de solicitudes al encargado del área destinataria",
+    "background_color": "#142131"
+  },
+  "features": {
+    "bot_user": {
+      "display_name": "SIGECO",
+      "always_online": false
+    }
+  },
+  "oauth_config": {
+    "scopes": {
+      "bot": ["chat:write", "im:write"]
+    }
+  },
+  "settings": {
+    "org_deploy_enabled": false,
+    "socket_mode_enabled": false,
+    "token_rotation_enabled": false
+  }
+}

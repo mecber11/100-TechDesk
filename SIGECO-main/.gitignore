@@ -1,0 +1,38 @@
+# Dependencias y compilaciones
+node_modules/
+vendor/
+dist/
+build/
+*.tsbuildinfo
+
+# Configuracion privada
+.env
+.env.*
+!.env.example
+!.env.testing.example
+auth.json
+*.pem
+*.key
+
+# Archivos locales y caches
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+__pycache__/
+*.pyc
+*.log
+*.sqlite
+*.sqlite3
+*.db
+.phpunit.cache/
+.phpunit.result.cache
+docs/procesos_bpmn/render_qa/
+backend/bootstrap/cache/*.php
+
+# Herramientas de mantenimiento local
+backend/reset_pwd.php
+backend/restore.php
+
+# Documento personal de practicas
+/01. FORMATO - PLAN DE PRÁCTICAS.docx
