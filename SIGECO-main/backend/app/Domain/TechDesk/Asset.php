@@ -39,85 +39,151 @@ class Asset extends Model
         'status',
         'physical_condition',
         'location',
+        'image_url',
+        'foto_url',
         'depreciation_info',
     ];
 
-    public function getAssetIdAttribute(): int
+    public function getAssetIdAttribute(): ?int
     {
-        return $this->id_activo;
+        return $this->id_activo ?? null;
     }
 
-    public function getPatrimonialCodeAttribute(): string
+    public function getPatrimonialCodeAttribute(): ?string
     {
-        return $this->codigo_patrimonial;
+        return $this->codigo_patrimonial ?? null;
     }
 
     public function getSerialNumberAttribute(): ?string
     {
-        return $this->numero_serie;
+        return $this->numero_serie ?? null;
     }
 
-    public function getNameAttribute(): string
+    public function getNameAttribute(): ?string
     {
-        return $this->nombre;
+        return $this->nombre ?? null;
     }
 
-    public function getTypeAttribute(): string
+    public function getTypeAttribute(): ?string
     {
-        return $this->tipo;
+        return $this->tipo ?? null;
     }
 
-    public function getBrandAttribute(): string
+    public function getBrandAttribute(): ?string
     {
-        return $this->marca;
+        return $this->marca ?? null;
     }
 
-    public function getModelAttribute(): string
+    public function getModelAttribute(): ?string
     {
-        return $this->modelo;
+        return $this->modelo ?? null;
     }
 
-    public function getStatusAttribute(): string
+    public function getStatusAttribute(): ?string
     {
-        return $this->estado;
+        return $this->estado ?? null;
     }
 
-    public function getPhysicalConditionAttribute(): string
+    public function getPhysicalConditionAttribute(): ?string
     {
-        return $this->condicion_fisica;
+        return $this->condicion_fisica ?? null;
     }
 
     public function getLocationAttribute(): ?string
     {
-        return $this->ubicacion;
+        return $this->ubicacion ?? null;
+    }
+
+    public function getImageUrlAttribute(): ?string
+    {
+        return $this->image?->url ?? null;
+    }
+
+    public function getFotoUrlAttribute(): ?string
+    {
+        return $this->image?->url ?? null;
     }
 
     public function getDepreciationInfoAttribute(): array
     {
-        $costo = (float) ($this->costo_adquisicion ?? 0);
+        $costoRaw = $this->costo_adquisicion;
         $vidaMeses = max(1, (int) ($this->vida_util_meses ?? 36));
 
-        if (! $this->fecha_adquisicion || $costo <= 0) {
+        if ($costoRaw === null || ! $this->fecha_adquisicion) {
             return [
+                'valorable' => false,
+                'motivo_pendiente' => $costoRaw === null ? 'Costo de adquisición no registrado' : 'Fecha de adquisición no registrada',
                 'meses_uso' => 0,
                 'porcentaje_depreciacion' => 0,
+                'depreciacion_acumulada' => 0.00,
+                'valor_actual' => $costoRaw !== null ? (float) $costoRaw : 0.00,
+                'vida_util_restante_meses' => $vidaMeses,
+            ];
+        }
+
+        $costo = (float) $costoRaw;
+        if ($costo < 0) {
+            return [
+                'valorable' => false,
+                'motivo_pendiente' => 'Costo de adquisición inválido',
+                'meses_uso' => 0,
+                'porcentaje_depreciacion' => 0,
+                'depreciacion_acumulada' => 0.00,
+                'valor_actual' => 0.00,
+                'vida_util_restante_meses' => $vidaMeses,
+            ];
+        }
+
+        $now = now()->setTimezone('America/Lima');
+        $acq = Carbon::parse($this->fecha_adquisicion, 'America/Lima');
+
+        if ($now->lessThan($acq)) {
+            return [
+                'valorable' => false,
+                'motivo_pendiente' => 'Fecha de adquisición futura',
+                'meses_uso' => 0,
+                'porcentaje_depreciacion' => 0,
+                'depreciacion_acumulada' => 0.00,
                 'valor_actual' => $costo,
                 'vida_util_restante_meses' => $vidaMeses,
             ];
         }
 
-        $mesesUso = Carbon::parse($this->fecha_adquisicion)->diffInMonths(now());
-        $depreciacionMensual = $costo / $vidaMeses;
-        $depreciacionAcumulada = min($costo, $mesesUso * $depreciacionMensual);
-        $valorActual = max(0, $costo - $depreciacionAcumulada);
-        $porcentaje = min(100, round(($depreciacionAcumulada / $costo) * 100, 1));
+        // Aniversarios mensuales de calendario con ajuste a último día de mes
+        $yDiff = $now->year - $acq->year;
+        $mDiff = $now->month - $acq->month;
+        $totalMonths = ($yDiff * 12) + $mDiff;
+        $effectiveDay = min($acq->day, $now->daysInMonth);
+        if ($now->day < $effectiveDay) {
+            $totalMonths--;
+        }
+        $mesesCompletos = max(0, $totalMonths);
+        $mesesUso = min($vidaMeses, $mesesCompletos);
+
+        $depreciacionAcumulada = round(($costo * $mesesUso) / $vidaMeses, 2);
+        $valorActual = max(0.0, round($costo - $depreciacionAcumulada, 2));
+        $porcentaje = $costo > 0 ? min(100.0, round(($depreciacionAcumulada / $costo) * 100, 2)) : 0;
 
         return [
-            'meses_uso' => $mesesUso,
+            'valorable' => true,
+            'motivo_pendiente' => null,
+            'meses_uso' => $mesesCompletos,
+            'meses_depreciados' => $mesesUso,
             'porcentaje_depreciacion' => $porcentaje,
-            'valor_actual' => round($valorActual, 2),
-            'vida_util_restante_meses' => max(0, $vidaMeses - $mesesUso),
+            'depreciacion_acumulada' => $depreciacionAcumulada,
+            'valor_actual' => $valorActual,
+            'vida_util_restante_meses' => max(0, $vidaMeses - $mesesCompletos),
         ];
+    }
+
+    public function image(): BelongsTo
+    {
+        return $this->belongsTo(AssetImage::class, 'id_imagen');
+    }
+
+    public function imagen(): BelongsTo
+    {
+        return $this->belongsTo(AssetImage::class, 'id_imagen');
     }
 
     public function creator(): BelongsTo

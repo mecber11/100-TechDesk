@@ -22,8 +22,8 @@ class SlaService
 
     public function savePolicy(array $payload, ?int $id = null): SlaPolicy
     {
-        $payload['tiempo_primera_respuesta_horas'] = max(0.5, (float) ($payload['tiempo_primera_respuesta_horas'] ?? 2));
-        $payload['tiempo_resolucion_horas'] = max(1, (float) ($payload['tiempo_resolucion_horas'] ?? 24));
+        $payload['tiempo_primera_respuesta_horas'] = max(0.1, (float) ($payload['tiempo_primera_respuesta_horas'] ?? 2));
+        $payload['tiempo_resolucion_horas'] = max(0.5, (float) ($payload['tiempo_resolucion_horas'] ?? 24));
         $payload['activo'] = (bool) ($payload['activo'] ?? true);
 
         return $this->slaRepo->savePolicy($payload, $id);
@@ -39,18 +39,30 @@ class SlaService
         $firstResponseHours = $policy ? (float) $policy->tiempo_primera_respuesta_horas : 2.0;
 
         $createdAt = Carbon::parse($order->creado_en ?? now());
-        $deadline = (clone $createdAt)->addHours((int) $resolutionHours);
+
+        // Respetar horas fraccionarias con precisión en minutos
+        $resolutionMinutesLimit = (int) round($resolutionHours * 60);
+        $firstResponseMinutesLimit = (int) round($firstResponseHours * 60);
+
+        $deadline = (clone $createdAt)->addMinutes($resolutionMinutesLimit);
+        $firstResponseDeadline = (clone $createdAt)->addMinutes($firstResponseMinutesLimit);
 
         $now = now();
         $isClosedOrResolved = in_array($order->estado, ['Atendido', 'Cerrado'], true);
         $isInProgress = $order->estado === 'EnAtencion';
 
+        // Hito estable de primera atención
         $firstResponseMinutes = null;
-        if ($isInProgress || $isClosedOrResolved) {
-            $attentionAt = $order->fecha_atencion ?? $order->actualizado_en ?? $now;
-            $firstResponseMinutes = max(0, $createdAt->diffInMinutes(Carbon::parse($attentionAt)));
+        $metFirstResponse = null;
+        $attentionAt = $order->fecha_atencion ?? null;
+
+        if ($isInProgress || $isClosedOrResolved || $attentionAt) {
+            $attentionTimestamp = Carbon::parse($attentionAt ?? $now);
+            $firstResponseMinutes = max(0, $createdAt->diffInMinutes($attentionTimestamp));
+            $metFirstResponse = $attentionTimestamp->lte($firstResponseDeadline);
         }
 
+        // Hito de resolución
         $resolutionMinutes = null;
         $metSla = null;
         $slaStatus = 'EnTiempo';
@@ -61,7 +73,6 @@ class SlaService
             $metSla = $resolvedAt->lte($deadline);
             $slaStatus = $metSla ? 'Cumplido' : 'Vencido';
         } else {
-            // En progreso o nuevo
             if ($now->gt($deadline)) {
                 $slaStatus = 'Vencido';
                 $metSla = false;
@@ -89,7 +100,35 @@ class SlaService
             'alerta_enviada' => $slaStatus === 'Vencido' || $slaStatus === 'EnRiesgo',
         ];
 
-        return $this->slaRepo->saveOrderSla($metricData);
+        $metric = $this->slaRepo->saveOrderSla($metricData);
+
+        // Crear alerta persistente en bandeja TechDesk deduplicada por pedido y tipo
+        if (in_array($slaStatus, ['EnRiesgo', 'Vencido'], true)) {
+            $alertType = $slaStatus === 'Vencido' ? 'sla_vencido' : 'sla_riesgo';
+            $existingAlert = $this->slaRepo->findNotificationByOrderAndType($order->id_pedido, $alertType);
+
+            if (! $existingAlert) {
+                $code = $order->codigo_pedido ?? "PED-{$order->id_pedido}";
+                $title = $slaStatus === 'Vencido'
+                    ? "Alerta SLA: Pedido {$code} vencido"
+                    : "Advertencia SLA: Pedido {$code} en riesgo";
+
+                $msg = $slaStatus === 'Vencido'
+                    ? "El pedido {$code} superó el plazo máximo de resolución establecido en {$resolutionHours} horas."
+                    : "El pedido {$code} tiene menos del 25% de tiempo restante antes de vencer su SLA ({$resolutionHours}h).";
+
+                $this->slaRepo->createNotification([
+                    'id_pedido' => $order->id_pedido,
+                    'tipo' => $alertType,
+                    'titulo' => $title,
+                    'mensaje' => $msg,
+                    'destinatario_id' => $order->asignado_a ?? null,
+                    'leido' => false,
+                ]);
+            }
+        }
+
+        return $metric;
     }
 
     public function getMetricByOrder(int $orderId): ?OrderSla
@@ -99,29 +138,44 @@ class SlaService
 
     public function getDashboardMetrics(): array
     {
-        // Actualizar métricas activas
-        $activeOrders = $this->slaRepo->getActiveOrdersForSlaTracking();
-        foreach ($activeOrders as $order) {
-            $this->calculateSlaForOrder($order);
-        }
-
         $metrics = $this->slaRepo->getSlaDashboardMetrics();
-        $metrics['active_orders_tracking'] = $activeOrders->map(function ($order) {
-            $metric = $this->slaRepo->findMetricByOrder($order->id_pedido);
-            return [
+        $activeOrders = $this->slaRepo->getActiveOrdersForSlaTracking();
+
+        $trackingList = [];
+        foreach ($activeOrders as $order) {
+            $orderMetric = $this->calculateSlaForOrder($order);
+
+            $trackingList[] = [
                 'order_id' => $order->id_pedido,
                 'order_code' => $order->codigo_pedido,
                 'title' => $order->titulo,
                 'priority' => $order->prioridad,
                 'status' => $order->estado,
                 'from_area' => $order->fromArea?->nombre,
-                'requested_by' => $order->requestedBy?->nombre_completo ?? $order->nombre_solicitante,
-                'created_at' => $order->creado_en,
-                'deadline_sla' => $metric?->fecha_limite_sla,
-                'sla_status' => $metric?->estado_sla ?? 'EnTiempo',
+                'requested_by' => $order->requestedBy?->nombre_completo,
+                'created_at' => $order->creado_en ? $order->creado_en->toIso8601String() : null,
+                'deadline_sla' => $orderMetric->fecha_limite_sla ? $orderMetric->fecha_limite_sla->toIso8601String() : null,
+                'sla_status' => $orderMetric->estado_sla,
             ];
-        });
+        }
+
+        $metrics['active_orders_tracking'] = $trackingList;
 
         return $metrics;
+    }
+
+    public function getNotifications(?int $userId = null): Collection
+    {
+        return $this->slaRepo->getNotifications($userId);
+    }
+
+    public function markNotificationRead(int $id): bool
+    {
+        return $this->slaRepo->markNotificationRead($id);
+    }
+
+    public function markAllNotificationsRead(?int $userId = null): int
+    {
+        return $this->slaRepo->markAllNotificationsRead($userId);
     }
 }

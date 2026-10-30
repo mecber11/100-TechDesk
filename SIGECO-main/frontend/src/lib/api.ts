@@ -5,6 +5,7 @@ import { mockApi } from "./mockApi";
 const IS_DEMO = import.meta.env.VITE_DEMO_MODE === "true";
 
 const USER_KEY = "nexus.user";
+const TOKEN_KEY = "nexus.token";
 
 export type AuthUser = {
   id: number;
@@ -29,9 +30,18 @@ export function getStoredUser(): AuthUser | null {
   }
 }
 
-export function setSession(user: AuthUser | null): void {
-  if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
-  else localStorage.removeItem(USER_KEY);
+export function getStoredToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+export function setSession(user: AuthUser | null, token?: string | null): void {
+  if (user) {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    if (token) localStorage.setItem(TOKEN_KEY, token);
+  } else {
+    localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+  }
 }
 
 export type Paged<T> = {
@@ -46,11 +56,13 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   if (IS_DEMO) return mockApi<T>(path, init);
   // ─────────────────────────────────────────────────────────────────────────
   const isFormData = init?.body instanceof FormData;
+  const token = getStoredToken();
   const res = await fetch(`/api/v1${path}`, {
     ...init,
-    credentials: "same-origin",
+    credentials: "include",
     headers: {
       Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(!isFormData ? { "Content-Type": "application/json" } : {}),
       ...(init?.headers ?? {}),
     },
@@ -87,4 +99,33 @@ export async function apiList<T>(path: string, q = "", params: Record<string, st
     current_page: Number(json.current_page ?? meta.current_page ?? 1),
     last_page: Number(json.last_page ?? meta.last_page ?? 1),
   };
+}
+
+export async function apiDownload(path: string, fallbackFilename?: string): Promise<Blob> {
+  let blob: Blob;
+  if (IS_DEMO) {
+    blob = await mockApi<Blob>(path, { method: "GET", headers: { Accept: "text/csv" } });
+  } else {
+    const res = await fetch(`/api/v1${path}`, {
+      method: "GET",
+      credentials: "same-origin",
+    });
+    if (!res.ok) {
+      throw new Error(`Error al descargar archivo (${res.status})`);
+    }
+    blob = await res.blob();
+  }
+
+  if (fallbackFilename && typeof window !== "undefined") {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fallbackFilename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  }
+
+  return blob;
 }

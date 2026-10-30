@@ -32,11 +32,13 @@ class AssetAssignment extends Model
         'assigned_user_email',
         'asset_code',
         'asset_name',
+        'requesting_area_name',
+        'destination_area_name',
     ];
 
-    public function getAssignmentIdAttribute(): int
+    public function getAssignmentIdAttribute(): ?int
     {
-        return $this->id_asignacion;
+        return $this->id_asignacion ?? null;
     }
 
     public function getAssignedUserNameAttribute(): ?string
@@ -59,6 +61,16 @@ class AssetAssignment extends Model
         return $this->asset?->nombre;
     }
 
+    public function getRequestingAreaNameAttribute(): ?string
+    {
+        return $this->requestingArea?->nombre;
+    }
+
+    public function getDestinationAreaNameAttribute(): ?string
+    {
+        return $this->assignedArea?->nombre;
+    }
+
     public function asset(): BelongsTo
     {
         return $this->belongsTo(Asset::class, 'id_activo');
@@ -72,6 +84,11 @@ class AssetAssignment extends Model
     public function assignedArea(): BelongsTo
     {
         return $this->belongsTo(InternalArea::class, 'id_area_destino');
+    }
+
+    public function requestingArea(): BelongsTo
+    {
+        return $this->belongsTo(InternalArea::class, 'id_area_solicitante');
     }
 
     public function order(): BelongsTo

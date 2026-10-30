@@ -17,6 +17,7 @@ class AssetAssignmentRequest extends FormRequest
             'id_activo' => 'required|integer',
             'id_usuario_asignado' => 'required|integer',
             'id_area_destino' => 'nullable|integer',
+            'id_area_solicitante' => 'nullable|integer',
             'id_pedido' => 'nullable|integer',
             'fecha_devolucion_estimada' => 'nullable|date',
             'condicion_entrega' => 'nullable|string|max:100',

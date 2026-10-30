@@ -269,10 +269,26 @@ Ref: sec.usuarios_roles.id_usuario > sec.usuarios.id_usuario
 // ESQUEMA TI: 100% TechDesk (Activos, SLAs y Mantenimiento)
 // ==========================================
 
+Table ti.imagenes_activo {
+  id_imagen bigint [not null, pk]
+  ruta varchar(255) [not null]
+  mime varchar(100) [not null]
+  tamano_bytes bigint [not null]
+  hash_sha256 varchar(64)
+  nombre_original varchar(255)
+  creado_por integer
+  creado_en timestamptz [not null]
+}
+
 Table ti.activos {
   id_activo bigint [not null, pk]
   codigo_patrimonial varchar(50) [not null, unique]
   numero_serie varchar(100)
+  tipo_identificador_externo varchar(50) [not null, default: 'Serie']
+  identificador_alternativo varchar(100)
+  emisor_identificador_externo varchar(100)
+  identificador_normalizado varchar(120)
+  id_imagen bigint
   nombre varchar(180) [not null]
   tipo varchar(50) [not null]
   marca varchar(80) [not null]
@@ -295,6 +311,7 @@ Table ti.asignaciones_activo {
   id_activo bigint [not null]
   id_usuario_asignado integer [not null]
   id_area_destino bigint
+  id_area_solicitante bigint
   id_pedido bigint
   asignado_por integer
   fecha_asignacion timestamptz [not null]
@@ -356,10 +373,25 @@ Table ti.metricas_sla_pedido {
   actualizado_en timestamptz [not null]
 }
 
+Table ti.notificaciones_techdesk {
+  id_notificacion bigint [not null, pk]
+  id_pedido bigint
+  tipo varchar(50) [not null]
+  titulo varchar(200) [not null]
+  mensaje text [not null]
+  destinatario_id integer
+  leido boolean [not null, default: false]
+  creado_en timestamptz [not null]
+  actualizado_en timestamptz [not null]
+}
+
+Ref: ti.imagenes_activo.creado_por > sec.usuarios.id_usuario
+Ref: ti.activos.id_imagen > ti.imagenes_activo.id_imagen
 Ref: ti.activos.creado_por > sec.usuarios.id_usuario
 Ref: ti.asignaciones_activo.id_activo > ti.activos.id_activo
 Ref: ti.asignaciones_activo.id_usuario_asignado > sec.usuarios.id_usuario
 Ref: ti.asignaciones_activo.id_area_destino > org.areas.id_area
+Ref: ti.asignaciones_activo.id_area_solicitante > org.areas.id_area
 Ref: ti.asignaciones_activo.id_pedido > req.pedidos.id_pedido
 Ref: ti.asignaciones_activo.asignado_por > sec.usuarios.id_usuario
 Ref: ti.asignaciones_activo.recibido_por > sec.usuarios.id_usuario
@@ -367,4 +399,6 @@ Ref: ti.mantenimientos_activo.id_activo > ti.activos.id_activo
 Ref: ti.mantenimientos_activo.realizado_por > sec.usuarios.id_usuario
 Ref: ti.metricas_sla_pedido.id_pedido > req.pedidos.id_pedido
 Ref: ti.metricas_sla_pedido.id_politica > ti.politicas_sla.id_politica
+Ref: ti.notificaciones_techdesk.id_pedido > req.pedidos.id_pedido
+Ref: ti.notificaciones_techdesk.destinatario_id > sec.usuarios.id_usuario
 

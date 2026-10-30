@@ -10,14 +10,34 @@ import {
   AlertTriangle,
   Clock,
   X,
+  Download,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
-import { api, type Paged } from "../../lib/api";
-import type { Asset, AssetAssignment } from "./types";
+import { api, apiDownload, type Paged } from "../../lib/api";
+import type { Asset, AssetAssignment, AssignmentSummary } from "./types";
+
+const ASSET_TYPES = [
+  "Laptop",
+  "Desktop",
+  "Monitor",
+  "Periférico",
+  "Accesorio de Red",
+  "Servidor",
+  "Impresora",
+  "Otro",
+];
 
 export function AssetAssignmentsTab() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("Activo");
+  const [dueStatusFilter, setDueStatusFilter] = useState<string>("");
+  const [assetTypeFilter, setAssetTypeFilter] = useState<string>("");
+  const [requestingAreaFilter, setRequestingAreaFilter] = useState<string>("");
+  const [destinationAreaFilter, setDestinationAreaFilter] = useState<string>("");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
   const [page, setPage] = useState(1);
 
   // Modal states
@@ -30,6 +50,7 @@ export function AssetAssignmentsTab() {
   const [assignForm, setAssignForm] = useState({
     id_activo: "",
     id_usuario_asignado: "",
+    id_area_solicitante: "",
     id_area_destino: "",
     id_pedido: "",
     fecha_devolucion_estimada: "",
@@ -42,35 +63,60 @@ export function AssetAssignmentsTab() {
     observaciones_devolucion: "",
   });
 
+  // Build query string
+  const queryParams = new URLSearchParams();
+  queryParams.set("page", String(page));
+  queryParams.set("per_page", "12");
+  if (statusFilter) queryParams.set("status", statusFilter);
+  if (search) queryParams.set("search", search);
+  if (dueStatusFilter) queryParams.set("due_status", dueStatusFilter);
+  if (assetTypeFilter) queryParams.set("asset_type", assetTypeFilter);
+  if (requestingAreaFilter) queryParams.set("id_area_solicitante", requestingAreaFilter);
+  if (destinationAreaFilter) queryParams.set("id_area_destino", destinationAreaFilter);
+  if (dateFrom) queryParams.set("date_from", dateFrom);
+  if (dateTo) queryParams.set("date_to", dateTo);
+
   // Query Assignments
-  const queryUrl = `/techdesk/assignments?page=${page}&per_page=12${
-    statusFilter ? `&status=${encodeURIComponent(statusFilter)}` : ""
-  }${search ? `&search=${encodeURIComponent(search)}` : ""}`;
-
   const { data: assignmentsData, isLoading } = useQuery({
-    queryKey: ["techdesk-assignments", page, statusFilter, search],
-    queryFn: () => api<Paged<AssetAssignment>>(queryUrl),
+    queryKey: [
+      "techdesk-assignments",
+      page,
+      statusFilter,
+      search,
+      dueStatusFilter,
+      assetTypeFilter,
+      requestingAreaFilter,
+      destinationAreaFilter,
+      dateFrom,
+      dateTo,
+    ],
+    queryFn: () => api<Paged<AssetAssignment>>(`/techdesk/assignments?${queryParams.toString()}`),
   });
 
-  // Query available stock for assignment dropdown
-  const { data: stockData } = useQuery({
-    queryKey: ["techdesk-available-stock"],
-    queryFn: () => api<{ data: Asset[] }>("/techdesk/assets/stock"),
-    enabled: openAssignModal,
+  // Query Summary Counters
+  const { data: summaryData } = useQuery({
+    queryKey: ["techdesk-assignments-summary"],
+    queryFn: () => api<{ data: AssignmentSummary }>("/techdesk/assignments/summary"),
   });
 
-  // Query lookups (team & areas)
-  const { data: teamData } = useQuery({
-    queryKey: ["team-all"],
-    queryFn: () => api<any[]>("/team"),
-    enabled: openAssignModal,
-  });
+  const summary = summaryData?.data;
 
+  // Query lookups
   const { data: lookupsData } = useQuery({
-    queryKey: ["lookups"],
-    queryFn: () => api<{ areas: { area_id: number; name: string; code: string }[] }>("/lookups"),
-    enabled: openAssignModal,
+    queryKey: ["techdesk-assignments-lookups"],
+    queryFn: () =>
+      api<{
+        data: {
+          team: { id_usuario: number; nombre: string; correo: string }[];
+          areas: { id_area: number; nombre: string; codigo: string }[];
+          orders: { id_pedido: number; codigo_pedido: string }[];
+          stock: Asset[];
+        };
+      }>("/techdesk/assignments/lookups"),
+    enabled: openAssignModal || !!requestingAreaFilter || !!destinationAreaFilter,
   });
+
+  const lookups = lookupsData?.data;
 
   // Mutation Assign
   const assignMutation = useMutation({
@@ -81,12 +127,14 @@ export function AssetAssignmentsTab() {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["techdesk-assignments"] });
+      qc.invalidateQueries({ queryKey: ["techdesk-assignments-summary"] });
       qc.invalidateQueries({ queryKey: ["techdesk-assets"] });
       qc.invalidateQueries({ queryKey: ["techdesk-assets-kpis"] });
       setOpenAssignModal(false);
       setAssignForm({
         id_activo: "",
         id_usuario_asignado: "",
+        id_area_solicitante: "",
         id_area_destino: "",
         id_pedido: "",
         fecha_devolucion_estimada: "",
@@ -109,6 +157,7 @@ export function AssetAssignmentsTab() {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["techdesk-assignments"] });
+      qc.invalidateQueries({ queryKey: ["techdesk-assignments-summary"] });
       qc.invalidateQueries({ queryKey: ["techdesk-assets"] });
       qc.invalidateQueries({ queryKey: ["techdesk-assets-kpis"] });
       setOpenReturnModal(false);
@@ -141,7 +190,12 @@ export function AssetAssignmentsTab() {
     const payload = {
       id_activo: parseInt(assignForm.id_activo, 10),
       id_usuario_asignado: parseInt(assignForm.id_usuario_asignado, 10),
-      id_area_destino: assignForm.id_area_destino ? parseInt(assignForm.id_area_destino, 10) : null,
+      id_area_solicitante: assignForm.id_area_solicitante
+        ? parseInt(assignForm.id_area_solicitante, 10)
+        : null,
+      id_area_destino: assignForm.id_area_destino
+        ? parseInt(assignForm.id_area_destino, 10)
+        : null,
       id_pedido: assignForm.id_pedido ? parseInt(assignForm.id_pedido, 10) : null,
       fecha_devolucion_estimada: assignForm.fecha_devolucion_estimada || null,
       condicion_entrega: assignForm.condicion_entrega,
@@ -162,16 +216,94 @@ export function AssetAssignmentsTab() {
     });
   }
 
+  async function handleExportCsv() {
+    const exportParams = new URLSearchParams(queryParams);
+    exportParams.delete("page");
+    exportParams.delete("per_page");
+    await apiDownload(
+      `/techdesk/assignments/export?${exportParams.toString()}`,
+      `asignaciones_techdesk_${new Date().toISOString().slice(0, 10)}.csv`
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* Control Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-md">
-        <div className="flex flex-1 flex-wrap items-center gap-3">
-          <div className="relative min-w-[240px] flex-1">
+      {/* KPI Counters */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-cyan-500/10 via-slate-900 to-slate-950 p-4 shadow-lg">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-cyan-400 uppercase tracking-wider">
+              Total Registros
+            </span>
+            <Layers className="h-4 w-4 text-cyan-400" />
+          </div>
+          <p className="mt-2 text-2xl font-bold text-white tracking-tight">
+            {summary?.total ?? 0}
+          </p>
+          <p className="mt-0.5 text-[10px] text-slate-400">Historial acumulado</p>
+        </div>
+
+        <div className="rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-500/10 via-slate-900 to-slate-950 p-4 shadow-lg">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-blue-400 uppercase tracking-wider">
+              En Préstamo
+            </span>
+            <UserCheck className="h-4 w-4 text-blue-400" />
+          </div>
+          <p className="mt-2 text-2xl font-bold text-blue-300 tracking-tight">
+            {summary?.activos ?? 0}
+          </p>
+          <p className="mt-0.5 text-[10px] text-slate-400">Asignaciones vigentes</p>
+        </div>
+
+        <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-slate-900 to-slate-950 p-4 shadow-lg">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider">
+              Devueltos
+            </span>
+            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+          </div>
+          <p className="mt-2 text-2xl font-bold text-emerald-400 tracking-tight">
+            {summary?.devueltos ?? 0}
+          </p>
+          <p className="mt-0.5 text-[10px] text-slate-400">Reingresados a almacén</p>
+        </div>
+
+        <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-slate-900 to-slate-950 p-4 shadow-lg">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-amber-400 uppercase tracking-wider">
+              Por Vencer (&le;48h)
+            </span>
+            <Clock className="h-4 w-4 text-amber-400" />
+          </div>
+          <p className="mt-2 text-2xl font-bold text-amber-300 tracking-tight">
+            {summary?.por_vencer ?? 0}
+          </p>
+          <p className="mt-0.5 text-[10px] text-slate-400">Próximos a cumplirse</p>
+        </div>
+
+        <div className="rounded-2xl border border-rose-500/20 bg-gradient-to-br from-rose-500/10 via-slate-900 to-slate-950 p-4 shadow-lg">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-rose-400 uppercase tracking-wider">
+              Vencidos
+            </span>
+            <AlertTriangle className="h-4 w-4 text-rose-400" />
+          </div>
+          <p className="mt-2 text-2xl font-bold text-rose-400 tracking-tight">
+            {summary?.vencidos ?? 0}
+          </p>
+          <p className="mt-0.5 text-[10px] text-slate-400">Plazo estimado superado</p>
+        </div>
+      </div>
+
+      {/* Combined Filter Bar */}
+      <div className="p-4 rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-md space-y-3">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          <div className="relative flex-1">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Buscar por colaborador, código o equipo..."
+              placeholder="Buscar por equipo, código patrimonial, colaborador o correo..."
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -181,59 +313,134 @@ export function AssetAssignmentsTab() {
             />
           </div>
 
-          <div className="flex bg-slate-950/80 border border-slate-800 rounded-xl p-1 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={() => {
-                setStatusFilter("Activo");
-                setPage(1);
-              }}
-              className={`px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer ${
-                statusFilter === "Activo"
-                  ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
+              onClick={handleExportCsv}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition-colors cursor-pointer"
+              title="Descargar lista filtrada en formato CSV"
             >
-              Préstamos Activos
+              <Download className="h-4 w-4 text-cyan-400" />
+              <span>Exportar CSV</span>
             </button>
+
             <button
               onClick={() => {
-                setStatusFilter("Devuelto");
-                setPage(1);
+                setErrorMsg(null);
+                setOpenAssignModal(true);
               }}
-              className={`px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer ${
-                statusFilter === "Devuelto"
-                  ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
+              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium text-xs shadow-md shadow-cyan-500/20 transition-all cursor-pointer"
             >
-              Historial de Devoluciones
-            </button>
-            <button
-              onClick={() => {
-                setStatusFilter("");
-                setPage(1);
-              }}
-              className={`px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer ${
-                statusFilter === ""
-                  ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              Todos
+              <Plus className="h-4 w-4" />
+              <span>Nueva Asignación</span>
             </button>
           </div>
         </div>
 
-        <button
-          onClick={() => {
-            setErrorMsg(null);
-            setOpenAssignModal(true);
-          }}
-          className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium text-sm shadow-md shadow-cyan-500/20 transition-all cursor-pointer"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Nueva Asignación / Préstamo</span>
-        </button>
+        {/* Secondary filters row */}
+        <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 pt-2 border-t border-slate-800/60">
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(1);
+            }}
+            className="px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 focus:outline-none"
+          >
+            <option value="">Estado: Todos</option>
+            <option value="Activo">Activos (En préstamo)</option>
+            <option value="Devuelto">Devueltos</option>
+          </select>
+
+          <select
+            value={dueStatusFilter}
+            onChange={(e) => {
+              setDueStatusFilter(e.target.value);
+              setPage(1);
+            }}
+            className="px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 focus:outline-none"
+          >
+            <option value="">Plazo: Todos</option>
+            <option value="vigente">Vigentes a tiempo</option>
+            <option value="por_vencer">Por vencer (&le;48h)</option>
+            <option value="vencido">Vencidos</option>
+          </select>
+
+          <select
+            value={assetTypeFilter}
+            onChange={(e) => {
+              setAssetTypeFilter(e.target.value);
+              setPage(1);
+            }}
+            className="px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 focus:outline-none"
+          >
+            <option value="">Tipo de Activo: Todos</option>
+            {ASSET_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={requestingAreaFilter}
+            onChange={(e) => {
+              setRequestingAreaFilter(e.target.value);
+              setPage(1);
+            }}
+            className="px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 focus:outline-none"
+          >
+            <option value="">Área Solicitante: Todas</option>
+            {lookups?.areas?.map((a) => (
+              <option key={a.id_area} value={a.id_area}>
+                {a.nombre}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={destinationAreaFilter}
+            onChange={(e) => {
+              setDestinationAreaFilter(e.target.value);
+              setPage(1);
+            }}
+            className="px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 focus:outline-none"
+          >
+            <option value="">Área Destino: Todas</option>
+            {lookups?.areas?.map((a) => (
+              <option key={a.id_area} value={a.id_area}>
+                {a.nombre}
+              </option>
+            ))}
+          </select>
+
+          <div>
+            <input
+              type="date"
+              placeholder="Desde"
+              value={dateFrom}
+              onChange={(e) => {
+                setDateFrom(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 focus:outline-none"
+              title="Fecha desde"
+            />
+          </div>
+
+          <div>
+            <input
+              type="date"
+              placeholder="Hasta"
+              value={dateTo}
+              onChange={(e) => {
+                setDateTo(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 focus:outline-none"
+              title="Fecha hasta"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Table */}
@@ -243,12 +450,12 @@ export function AssetAssignmentsTab() {
             <thead className="bg-slate-950/70 border-b border-slate-800 text-xs uppercase text-slate-400 font-semibold">
               <tr>
                 <th className="px-5 py-3.5">Colaborador Asignado</th>
-                <th className="px-5 py-3.5">Área</th>
+                <th className="px-5 py-3.5">Área Solicitante</th>
                 <th className="px-5 py-3.5">Activo / Equipo</th>
                 <th className="px-5 py-3.5">Fecha Entrega</th>
                 <th className="px-5 py-3.5">Devolución Estimada</th>
-                <th className="px-5 py-3.5">Ticket Vinculado</th>
-                <th className="px-5 py-3.5">Estado</th>
+                <th className="px-5 py-3.5">Ticket</th>
+                <th className="px-5 py-3.5">Estado / Vencimiento</th>
                 <th className="px-5 py-3.5 text-right">Acción</th>
               </tr>
             </thead>
@@ -268,88 +475,108 @@ export function AssetAssignmentsTab() {
                   </td>
                 </tr>
               ) : (
-                assignmentsData.data.map((item) => (
-                  <tr
-                    key={item.id_asignacion}
-                    className="hover:bg-slate-800/40 transition-colors"
-                  >
-                    <td className="px-5 py-4 whitespace-nowrap">
-                      <div className="font-semibold text-white">
-                        {item.assigned_user?.nombre_completo || "Usuario"}
-                      </div>
-                      <div className="text-xs text-slate-400">
-                        {item.assigned_user?.correo}
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 whitespace-nowrap text-xs text-slate-300">
-                      <span className="px-2.5 py-1 rounded-md bg-slate-800/80 border border-slate-700/60">
-                        {item.assigned_area?.nombre || "Sin área"}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 whitespace-nowrap">
-                      <div className="font-mono text-cyan-400 text-xs font-bold">
-                        {item.asset?.codigo_patrimonial || item.asset_code}
-                      </div>
-                      <div className="text-xs text-slate-300 max-w-xs truncate">
-                        {item.asset?.nombre || item.asset_name}
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 whitespace-nowrap text-xs text-slate-300">
-                      {item.fecha_asignacion ? item.fecha_asignacion.substring(0, 10) : "-"}
-                    </td>
-                    <td className="px-5 py-4 whitespace-nowrap text-xs">
-                      {item.fecha_devolucion_real ? (
-                        <span className="text-emerald-400 font-medium">
-                          Devuelto el {item.fecha_devolucion_real.substring(0, 10)}
+                assignmentsData.data.map((item) => {
+                  return (
+                    <tr
+                      key={item.id_asignacion}
+                      className="hover:bg-slate-800/40 transition-colors"
+                    >
+                      <td className="px-5 py-4 whitespace-nowrap">
+                        <div className="font-semibold text-white">
+                          {item.assigned_user?.nombre_completo || `Usuario #${item.id_usuario_asignado}`}
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          {item.assigned_user?.correo}
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 whitespace-nowrap text-xs text-slate-300">
+                        <span className="px-2.5 py-1 rounded-md bg-slate-800/80 border border-slate-700/60 font-medium">
+                          {item.requesting_area?.nombre || item.destination_area?.nombre || item.requesting_area_name || item.destination_area_name || "Sin área"}
                         </span>
-                      ) : item.fecha_devolucion_estimada ? (
-                        <span className="text-amber-300 font-medium">
-                          {item.fecha_devolucion_estimada.substring(0, 10)}
-                        </span>
-                      ) : (
-                        <span className="text-slate-500">Indefinido / Permanente</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-4 whitespace-nowrap text-xs">
-                      {item.order ? (
-                        <span className="inline-flex items-center gap-1 font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
-                          {item.order.codigo_pedido}
-                        </span>
-                      ) : (
-                        <span className="text-slate-500">Asignación directa</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                          item.estado === "Activo"
-                            ? "bg-blue-500/15 text-blue-300 border border-blue-500/30"
-                            : item.estado === "Devuelto"
-                            ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
-                            : "bg-rose-500/15 text-rose-300 border border-rose-500/30"
-                        }`}
-                      >
-                        <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                        {item.estado}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 whitespace-nowrap text-right">
-                      {item.estado === "Activo" ? (
-                        <button
-                          onClick={() => handleOpenReturn(item)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-medium border border-emerald-500/30 transition-colors cursor-pointer"
-                        >
-                          <RotateCcw className="h-3.5 w-3.5" />
-                          <span>Registrar Devolución</span>
-                        </button>
-                      ) : (
-                        <span className="text-xs text-slate-500 italic">
-                          Condición: {item.condicion_devolucion || "Operativo"}
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="px-5 py-4 whitespace-nowrap">
+                        <div className="font-mono text-cyan-400 text-xs font-bold">
+                          {item.asset?.codigo_patrimonial || item.asset_code}
+                        </div>
+                        <div className="text-xs text-slate-300 max-w-xs truncate">
+                          {item.asset?.nombre || item.asset_name}
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 whitespace-nowrap text-xs text-slate-300 font-mono">
+                        {item.fecha_asignacion ? item.fecha_asignacion.substring(0, 10) : "-"}
+                      </td>
+                      <td className="px-5 py-4 whitespace-nowrap text-xs">
+                        {item.fecha_devolucion_real ? (
+                          <span className="text-emerald-400 font-medium">
+                            Devuelto el {item.fecha_devolucion_real.substring(0, 10)}
+                          </span>
+                        ) : item.fecha_devolucion_estimada ? (
+                          <span
+                            className={`font-medium ${
+                              item.due_status === "vencido"
+                                ? "text-rose-400"
+                                : item.due_status === "por_vencer"
+                                ? "text-amber-300"
+                                : "text-slate-300"
+                            }`}
+                          >
+                            {item.fecha_devolucion_estimada.substring(0, 10)}
+                          </span>
+                        ) : (
+                          <span className="text-slate-500">Permanente</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-4 whitespace-nowrap text-xs">
+                        {item.order ? (
+                          <span className="inline-flex items-center gap-1 font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
+                            {item.order.codigo_pedido}
+                          </span>
+                        ) : (
+                          <span className="text-slate-500">Directo</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-4 whitespace-nowrap">
+                        <div className="flex flex-col gap-1 items-start">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                              item.estado === "Activo"
+                                ? "bg-blue-500/15 text-blue-300 border border-blue-500/30"
+                                : "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                            }`}
+                          >
+                            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                            {item.estado}
+                          </span>
+                          {item.estado === "Activo" && item.due_status === "vencido" && (
+                            <span className="text-[10px] font-semibold text-rose-400">
+                              Vencido
+                            </span>
+                          )}
+                          {item.estado === "Activo" && item.due_status === "por_vencer" && (
+                            <span className="text-[10px] font-semibold text-amber-400">
+                              Por vencer (&le;48h)
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 whitespace-nowrap text-right">
+                        {item.estado === "Activo" ? (
+                          <button
+                            onClick={() => handleOpenReturn(item)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-medium border border-emerald-500/30 transition-colors cursor-pointer"
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                            <span>Registrar Devolución</span>
+                          </button>
+                        ) : (
+                          <span className="text-xs text-slate-500 italic">
+                            Condición: {item.condicion_devolucion || "Operativo"}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -399,7 +626,7 @@ export function AssetAssignmentsTab() {
                 </h3>
                 <button
                   onClick={() => setOpenAssignModal(false)}
-                  className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+                  className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -407,7 +634,7 @@ export function AssetAssignmentsTab() {
 
               {errorMsg && (
                 <div className="mt-4 p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <AlertCircle className="h-4 w-4 shrink-0" />
                   <span>{errorMsg}</span>
                 </div>
               )}
@@ -415,50 +642,40 @@ export function AssetAssignmentsTab() {
               <form onSubmit={handleAssignSubmit} className="mt-4 space-y-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Seleccionar Activo Disponible en Stock *
+                    Activo Tecnológico (En Stock) *
                   </label>
                   <select
                     required
                     value={assignForm.id_activo}
-                    onChange={(e) =>
-                      setAssignForm({ ...assignForm, id_activo: e.target.value })
-                    }
+                    onChange={(e) => setAssignForm({ ...assignForm, id_activo: e.target.value })}
                     className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-slate-200 focus:border-cyan-500 focus:outline-none"
                   >
-                    <option value="">-- Elige un equipo disponible --</option>
-                    {stockData?.data?.map((asset) => (
-                      <option key={asset.id_activo} value={asset.id_activo}>
-                        [{asset.codigo_patrimonial}] {asset.nombre} ({asset.marca} {asset.modelo})
+                    <option value="">Seleccione un activo disponible</option>
+                    {lookups?.stock?.map((a) => (
+                      <option key={a.id_activo} value={a.id_activo}>
+                        [{a.codigo_patrimonial}] {a.nombre} ({a.marca} {a.modelo})
                       </option>
                     ))}
                   </select>
-                  {!stockData?.data?.length && (
-                    <p className="mt-1 text-[11px] text-amber-400">
-                      No hay activos en estado 'Disponible' en el almacén de TI.
-                    </p>
-                  )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-slate-300 mb-1">
-                      Colaborador Destinatario *
+                      Colaborador Asignado *
                     </label>
                     <select
                       required
                       value={assignForm.id_usuario_asignado}
                       onChange={(e) =>
-                        setAssignForm({
-                          ...assignForm,
-                          id_usuario_asignado: e.target.value,
-                        })
+                        setAssignForm({ ...assignForm, id_usuario_asignado: e.target.value })
                       }
                       className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-slate-200 focus:border-cyan-500 focus:outline-none"
                     >
-                      <option value="">-- Seleccionar integrante --</option>
-                      {teamData?.map((user: any) => (
-                        <option key={user.id_usuario} value={user.id_usuario}>
-                          {user.nombre_completo} ({user.correo})
+                      <option value="">Seleccione un colaborador</option>
+                      {lookups?.team?.map((u) => (
+                        <option key={u.id_usuario} value={u.id_usuario}>
+                          {u.nombre} ({u.correo})
                         </option>
                       ))}
                     </select>
@@ -466,22 +683,20 @@ export function AssetAssignmentsTab() {
 
                   <div>
                     <label className="block text-xs font-medium text-slate-300 mb-1">
-                      Área Destino
+                      Área Solicitante *
                     </label>
                     <select
-                      value={assignForm.id_area_destino}
+                      required
+                      value={assignForm.id_area_solicitante}
                       onChange={(e) =>
-                        setAssignForm({
-                          ...assignForm,
-                          id_area_destino: e.target.value,
-                        })
+                        setAssignForm({ ...assignForm, id_area_solicitante: e.target.value })
                       }
                       className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-slate-200 focus:border-cyan-500 focus:outline-none"
                     >
-                      <option value="">-- Seleccionar área (opcional) --</option>
-                      {lookupsData?.areas?.map((area) => (
-                        <option key={area.area_id} value={area.area_id}>
-                          {area.name} ({area.code})
+                      <option value="">Seleccione área solicitante</option>
+                      {lookups?.areas?.map((a) => (
+                        <option key={a.id_area} value={a.id_area}>
+                          {a.nombre}
                         </option>
                       ))}
                     </select>
@@ -491,25 +706,49 @@ export function AssetAssignmentsTab() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-slate-300 mb-1">
-                      ID Ticket / Pedido Vinculado (Opcional)
+                      Área Destino / Ubicación Física
                     </label>
-                    <input
-                      type="number"
-                      placeholder="Ej: 104"
+                    <select
+                      value={assignForm.id_area_destino}
+                      onChange={(e) =>
+                        setAssignForm({ ...assignForm, id_area_destino: e.target.value })
+                      }
+                      className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-slate-200 focus:border-cyan-500 focus:outline-none"
+                    >
+                      <option value="">Misma que área solicitante</option>
+                      {lookups?.areas?.map((a) => (
+                        <option key={a.id_area} value={a.id_area}>
+                          {a.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">
+                      Ticket / Pedido de Origen
+                    </label>
+                    <select
                       value={assignForm.id_pedido}
                       onChange={(e) =>
                         setAssignForm({ ...assignForm, id_pedido: e.target.value })
                       }
                       className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-slate-200 focus:border-cyan-500 focus:outline-none"
-                    />
-                    <span className="text-[11px] text-slate-500">
-                      Asocia esta entrega a una solicitud de hardware previa
-                    </span>
+                    >
+                      <option value="">Asignación directa (Sin ticket)</option>
+                      {lookups?.orders?.map((o) => (
+                        <option key={o.id_pedido} value={o.id_pedido}>
+                          {o.codigo_pedido}
+                        </option>
+                      ))}
+                    </select>
                   </div>
+                </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-slate-300 mb-1">
-                      Fecha Estimada de Devolución
+                      Fecha Devolución Estimada
                     </label>
                     <input
                       type="date"
@@ -523,24 +762,23 @@ export function AssetAssignmentsTab() {
                       className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-slate-200 focus:border-cyan-500 focus:outline-none"
                     />
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Condición de Entrega
-                  </label>
-                  <input
-                    type="text"
-                    value={assignForm.condicion_entrega}
-                    onChange={(e) =>
-                      setAssignForm({
-                        ...assignForm,
-                        condicion_entrega: e.target.value,
-                      })
-                    }
-                    placeholder="Operativo con cargador y funda"
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-slate-200 focus:border-cyan-500 focus:outline-none"
-                  />
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">
+                      Condición de Entrega
+                    </label>
+                    <select
+                      value={assignForm.condicion_entrega}
+                      onChange={(e) =>
+                        setAssignForm({ ...assignForm, condicion_entrega: e.target.value })
+                      }
+                      className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-slate-200 focus:border-cyan-500 focus:outline-none"
+                    >
+                      <option value="Operativo">Operativo (100% Funcional)</option>
+                      <option value="Bueno">Bueno (Detalles menores de uso)</option>
+                      <option value="Regular">Regular (Requiere atención)</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div>
@@ -549,13 +787,10 @@ export function AssetAssignmentsTab() {
                   </label>
                   <textarea
                     rows={2}
-                    placeholder="Comentarios o especificaciones sobre el préstamo..."
+                    placeholder="Accesorios entregados (cargador, mouse, mochila), estado físico..."
                     value={assignForm.observaciones_entrega}
                     onChange={(e) =>
-                      setAssignForm({
-                        ...assignForm,
-                        observaciones_entrega: e.target.value,
-                      })
+                      setAssignForm({ ...assignForm, observaciones_entrega: e.target.value })
                     }
                     className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-slate-200 focus:border-cyan-500 focus:outline-none"
                   />
@@ -565,16 +800,16 @@ export function AssetAssignmentsTab() {
                   <button
                     type="button"
                     onClick={() => setOpenAssignModal(false)}
-                    className="px-4 py-2 rounded-xl text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                    className="px-4 py-2 rounded-xl text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    disabled={assignMutation.isPending || !stockData?.data?.length}
-                    className="px-5 py-2 rounded-xl text-xs font-medium bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-md shadow-cyan-500/20 disabled:opacity-50 transition-all cursor-pointer"
+                    disabled={assignMutation.isPending}
+                    className="px-5 py-2 rounded-xl text-xs font-medium bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-md shadow-cyan-500/20 disabled:opacity-50 cursor-pointer"
                   >
-                    {assignMutation.isPending ? "Asignando..." : "Confirmar Asignación"}
+                    {assignMutation.isPending ? "Asignando..." : "Registrar Asignación"}
                   </button>
                 </div>
               </form>
@@ -600,7 +835,7 @@ export function AssetAssignmentsTab() {
                 </h3>
                 <button
                   onClick={() => setOpenReturnModal(false)}
-                  className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+                  className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -608,21 +843,22 @@ export function AssetAssignmentsTab() {
 
               {errorMsg && (
                 <div className="mt-4 p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <AlertCircle className="h-4 w-4 shrink-0" />
                   <span>{errorMsg}</span>
                 </div>
               )}
 
-              <div className="mt-4 p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-slate-300 space-y-1">
+              <div className="mt-4 p-3.5 rounded-2xl bg-slate-950/60 border border-slate-800 text-xs space-y-1">
                 <div>
-                  <span className="text-slate-500">Equipo: </span>
-                  <span className="text-white font-medium">
-                    [{selectedAssignment.asset?.codigo_patrimonial}] {selectedAssignment.asset?.nombre}
-                  </span>
+                  <span className="text-slate-500">Activo: </span>
+                  <span className="text-cyan-400 font-mono font-bold">
+                    {selectedAssignment.asset?.codigo_patrimonial || selectedAssignment.asset_code}
+                  </span>{" "}
+                  - {selectedAssignment.asset?.nombre || selectedAssignment.asset_name}
                 </div>
                 <div>
-                  <span className="text-slate-500">Devuelto por: </span>
-                  <span className="text-cyan-400 font-medium">
+                  <span className="text-slate-500">Colaborador: </span>
+                  <span className="text-white font-medium">
                     {selectedAssignment.assigned_user?.nombre_completo}
                   </span>
                 </div>
@@ -631,40 +867,39 @@ export function AssetAssignmentsTab() {
               <form onSubmit={handleReturnSubmit} className="mt-4 space-y-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Condición Física al Devolver *
+                    Condición Física de Devolución *
                   </label>
                   <select
-                    required
                     value={returnForm.condicion_devolucion}
                     onChange={(e) =>
-                      setReturnForm({
-                        ...returnForm,
-                        condicion_devolucion: e.target.value,
-                      })
+                      setReturnForm({ ...returnForm, condicion_devolucion: e.target.value })
                     }
                     className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-slate-200 focus:border-cyan-500 focus:outline-none"
                   >
-                    <option value="Operativo">Operativo (Vuelve a stock disponible)</option>
-                    <option value="Bueno">Bueno (Vuelve a stock disponible)</option>
-                    <option value="Regular">Regular (Requiere inspección)</option>
-                    <option value="Dañado">Dañado / Averiado (Pasa a mantenimiento)</option>
-                    <option value="Malo">Malo (Pasa a mantenimiento)</option>
+                    <option value="Operativo">Operativo (En buen estado)</option>
+                    <option value="Dañado">Dañado / Con Fallas (Derivar a Mantenimiento)</option>
+                    <option value="Incompleto">Incompleto (Falta accesorio/cargador)</option>
                   </select>
+                  {returnForm.condicion_devolucion === "Dañado" && (
+                    <div className="mt-2 p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[11px] flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 shrink-0" />
+                      <span>
+                        El activo se marcará en estado "Mantenimiento" y se generará una orden preventiva/correctiva automáticamente.
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Observaciones de la Recepción
+                    Observaciones de la Devolución
                   </label>
                   <textarea
                     rows={3}
-                    placeholder="Detalles sobre accesorios devueltos, estado de la batería, pantalla..."
+                    placeholder="Detalles del estado de recepción, componentes recibidos..."
                     value={returnForm.observaciones_devolucion}
                     onChange={(e) =>
-                      setReturnForm({
-                        ...returnForm,
-                        observaciones_devolucion: e.target.value,
-                      })
+                      setReturnForm({ ...returnForm, observaciones_devolucion: e.target.value })
                     }
                     className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-slate-200 focus:border-cyan-500 focus:outline-none"
                   />
@@ -674,14 +909,14 @@ export function AssetAssignmentsTab() {
                   <button
                     type="button"
                     onClick={() => setOpenReturnModal(false)}
-                    className="px-4 py-2 rounded-xl text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                    className="px-4 py-2 rounded-xl text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     disabled={returnMutation.isPending}
-                    className="px-5 py-2 rounded-xl text-xs font-medium bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white shadow-md shadow-emerald-500/20 disabled:opacity-50 transition-all cursor-pointer"
+                    className="px-5 py-2 rounded-xl text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20 disabled:opacity-50 cursor-pointer"
                   >
                     {returnMutation.isPending ? "Procesando..." : "Confirmar Recepción"}
                   </button>

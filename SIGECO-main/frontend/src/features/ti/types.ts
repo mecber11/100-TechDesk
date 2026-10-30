@@ -10,12 +10,32 @@ export type AssetType =
 
 export type AssetStatus = "Disponible" | "Asignado" | "Mantenimiento" | "Baja";
 export type AssetCondition = "Nuevo" | "Bueno" | "Regular" | "Malo";
+export type ExternalIdentifierType = "Serie" | "ServiceTag" | "IMEI" | "MAC" | "Otro" | "Ninguno";
 
 export type DepreciationInfo = {
+  valorable?: boolean;
+  motivo_pendiente?: string | null;
   meses_uso: number;
+  meses_depreciados?: number;
   porcentaje_depreciacion: number;
+  depreciacion_acumulada?: number;
+  depreciacion_mensual?: number;
   valor_actual: number;
   vida_util_restante_meses: number;
+};
+
+export type AssetImage = {
+  id_imagen: number;
+  image_id?: number;
+  ruta?: string;
+  url: string;
+  mime: string;
+  tamano_bytes?: number;
+  nombre_original?: string;
+  nombre_archivo?: string;
+  hash_sha256?: string;
+  creado_en?: string;
+  assets?: { id_activo: number; codigo_patrimonial: string; nombre: string; marca: string; modelo: string }[];
 };
 
 export type Asset = {
@@ -25,6 +45,15 @@ export type Asset = {
   patrimonial_code?: string;
   numero_serie?: string | null;
   serial_number?: string | null;
+  tipo_identificador_externo?: ExternalIdentifierType;
+  identificador_alternativo?: string | null;
+  emisor_identificador_externo?: string | null;
+  identificador_normalizado?: string | null;
+  id_imagen?: number | null;
+  image_url?: string | null;
+  foto_url?: string | null;
+  image?: AssetImage | null;
+  imagen?: AssetImage | null;
   nombre: string;
   name?: string;
   tipo: AssetType;
@@ -58,6 +87,7 @@ export type AssetAssignment = {
   id_activo: number;
   id_usuario_asignado: number;
   id_area_destino?: number | null;
+  id_area_solicitante?: number | null;
   id_pedido?: number | null;
   asignado_por?: number | null;
   fecha_asignacion: string;
@@ -69,6 +99,7 @@ export type AssetAssignment = {
   observaciones_entrega?: string | null;
   observaciones_devolucion?: string | null;
   recibido_por?: number | null;
+  due_status?: "vigente" | "por_vencer" | "vencido" | "indefinido";
   asset?: Asset;
   asset_code?: string;
   asset_name?: string;
@@ -76,6 +107,10 @@ export type AssetAssignment = {
   assigned_user_name?: string;
   assigned_user_email?: string;
   assigned_area?: { id_area: number; nombre: string; codigo: string };
+  destination_area?: { id_area: number; nombre: string; codigo: string };
+  destination_area_name?: string;
+  requesting_area?: { id_area: number; nombre: string; codigo: string };
+  requesting_area_name?: string;
   assigned_by?: { id_usuario: number; nombre_completo: string; correo: string };
   received_by?: { id_usuario: number; nombre_completo: string; correo: string };
   order?: { id_pedido: number; codigo_pedido: string; titulo: string; estado: string };
@@ -137,4 +172,47 @@ export type SlaDashboardMetrics = {
     deadline_sla?: string;
     sla_status: "EnTiempo" | "EnRiesgo" | "Vencido" | "Cumplido";
   }[];
+};
+
+export type AssetValuationSummary = {
+  as_of: string;
+  timezone: string;
+  currency: string;
+  method: string;
+  scope: string;
+  total_assets: number;
+  valued_assets: number;
+  pending_valuation_assets: number;
+  fully_depreciated_assets: number;
+  acquisition_value: string;
+  accumulated_depreciation: string;
+  current_value: string;
+  pending_details: { id_activo: number; codigo_patrimonial: string; nombre: string; motivo: string }[];
+  by_type: { tipo: string; count: number; acquisition_value: string; current_value: string }[];
+  by_status: { estado: string; count: number; acquisition_value: string; current_value: string }[];
+  by_area: { area: string; count: number; acquisition_value: string; current_value: string }[];
+  assets?: Asset[];
+};
+
+export type AssignmentSummary = {
+  total?: number;
+  total_filtrado: number;
+  activos: number;
+  devueltos: number;
+  activos_vencidos: number;
+  por_vencer?: number;
+  vencidos?: number;
+};
+
+export type TechDeskNotification = {
+  id_notificacion: number;
+  id_pedido?: number | null;
+  tipo: "sla_riesgo" | "sla_vencido" | "mantenimiento" | "info";
+  titulo: string;
+  mensaje: string;
+  destinatario_id?: number | null;
+  leido: boolean;
+  leida?: boolean;
+  creado_en: string;
+  fecha_creacion?: string;
 };

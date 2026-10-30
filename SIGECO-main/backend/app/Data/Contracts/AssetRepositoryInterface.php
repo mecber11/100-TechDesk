@@ -3,6 +3,7 @@
 namespace App\Data\Contracts;
 
 use App\Domain\TechDesk\Asset;
+use App\Domain\TechDesk\AssetImage;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
@@ -14,6 +15,8 @@ interface AssetRepositoryInterface
 
     public function findByPatrimonialCode(string $code): ?Asset;
 
+    public function findByIdentifier(string $type, ?string $issuer, string $normalizedValue, ?int $excludeAssetId = null): ?Asset;
+
     public function create(array $data): Asset;
 
     public function update(Asset $asset, array $data): Asset;
@@ -23,4 +26,12 @@ interface AssetRepositoryInterface
     public function getAvailableStock(?string $type = null): Collection;
 
     public function getKpiMetrics(): array;
+
+    public function getValuationSummary(array $filters = []): array;
+
+    public function storeImage(array $data): AssetImage;
+
+    public function findImageById(int $id): ?AssetImage;
+
+    public function listReusableImages(?string $search = null): Collection;
 }

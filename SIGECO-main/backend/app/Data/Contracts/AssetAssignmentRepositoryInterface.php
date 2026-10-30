@@ -19,4 +19,10 @@ interface AssetAssignmentRepositoryInterface
     public function activeAssignmentsForUser(int $userId): Collection;
 
     public function historyForAsset(int $assetId): Collection;
+
+    public function getSummary(array $filters): array;
+
+    public function getAllFiltered(array $filters): Collection;
+
+    public function getLookups(): array;
 }

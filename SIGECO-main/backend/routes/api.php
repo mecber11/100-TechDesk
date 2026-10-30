@@ -18,6 +18,10 @@ Route::prefix('v1')->group(function () {
     Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
     Route::post('auth/register', [AuthController::class, 'register'])->middleware('throttle:registration');
 
+    // Streaming de archivos de imágenes de activos (acceso público para etiquetas <img> del navegador)
+    Route::get('techdesk/asset-images/{id}/file', [AssetController::class, 'serveImageFile'])->whereNumber('id');
+    Route::get('techdesk/assets/images/{id}/file', [AssetController::class, 'serveImageFile'])->whereNumber('id');
+
     Route::middleware('api.token')->group(function () {
         Route::post('auth/logout', [AuthController::class, 'logout']);
         Route::get('auth/me', [AuthController::class, 'me']);
@@ -54,7 +58,15 @@ Route::prefix('v1')->group(function () {
 
         // TechDesk Suite: Módulo de Gestión de Activos, SLAs y Mantenimiento TI
         Route::middleware('role:TI_Encargado|TI_Equipo|Administrador_Empresa|Super_Admin|SuperAdmin')->prefix('techdesk')->group(function () {
-            // Activos de TI
+            // Imágenes de activos
+            Route::post('assets/images', [AssetController::class, 'uploadImage']);
+            Route::get('assets/images/reusable', [AssetController::class, 'reusableImages']);
+            Route::post('asset-images', [AssetController::class, 'uploadImage']);
+            Route::get('asset-images', [AssetController::class, 'reusableImages']);
+            Route::get('asset-images/reusable', [AssetController::class, 'reusableImages']);
+
+            // Activos de TI y Valoración
+            Route::get('assets/valuation', [AssetController::class, 'valuation']);
             Route::get('assets', [AssetController::class, 'index']);
             Route::get('assets/kpis', [AssetController::class, 'kpis']);
             Route::get('assets/stock', [AssetController::class, 'stock']);
@@ -64,6 +76,10 @@ Route::prefix('v1')->group(function () {
             Route::delete('assets/{id}', [AssetController::class, 'destroy'])->whereNumber('id');
 
             // Asignaciones y préstamos
+            Route::get('assignments/summary', [AssetAssignmentController::class, 'summary']);
+            Route::get('assignments/export', [AssetAssignmentController::class, 'export']);
+            Route::get('assignments/lookups', [AssetAssignmentController::class, 'lookups']);
+            Route::get('assignment-lookups', [AssetAssignmentController::class, 'lookups']);
             Route::get('assignments', [AssetAssignmentController::class, 'index']);
             Route::get('assignments/{id}', [AssetAssignmentController::class, 'show'])->whereNumber('id');
             Route::post('assignments', [AssetAssignmentController::class, 'store']);
@@ -84,6 +100,15 @@ Route::prefix('v1')->group(function () {
             Route::put('sla/policies/{id}', [SlaController::class, 'updatePolicy'])->whereNumber('id');
             Route::get('sla/dashboard', [SlaController::class, 'dashboard']);
             Route::get('sla/order/{orderId}', [SlaController::class, 'orderMetric'])->whereNumber('orderId');
+
+            // Notificaciones internas de TechDesk (Bandeja SLA)
+            Route::get('sla/notifications', [SlaController::class, 'notifications']);
+            Route::put('sla/notifications/{id}/read', [SlaController::class, 'markNotificationRead'])->whereNumber('id');
+            Route::post('sla/notifications/{id}/read', [SlaController::class, 'markNotificationRead'])->whereNumber('id');
+            Route::post('sla/notifications/read-all', [SlaController::class, 'markAllNotificationsRead']);
+            Route::get('notifications', [SlaController::class, 'notifications']);
+            Route::post('notifications/{id}/read', [SlaController::class, 'markNotificationRead'])->whereNumber('id');
+            Route::post('notifications/mark-all-read', [SlaController::class, 'markAllNotificationsRead']);
         });
 
         Route::middleware(['module:documentos', 'role:Administrador_Empresa|Super_Admin|SuperAdmin|TI_Encargado|TI_Equipo|Administracion_Encargado|Administracion_Equipo'])->group(function () {

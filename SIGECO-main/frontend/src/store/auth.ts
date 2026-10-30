@@ -29,12 +29,12 @@ export const useAuth = create<AuthState>((set, get) => ({
     }
   },
   login: async (email, password) => {
-    const res = await api<{ user: AuthUser }>("/auth/login", {
+    const res = await api<{ user: AuthUser; token?: string }>("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
     queryClient.clear();
-    setSession(res.user);
+    setSession(res.user, res.token);
     set({ user: res.user, initialized: true });
   },
   register: async (name, email, password, area, slackUserId) => {

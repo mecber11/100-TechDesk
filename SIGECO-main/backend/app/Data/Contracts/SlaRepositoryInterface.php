@@ -23,4 +23,14 @@ interface SlaRepositoryInterface
     public function getActiveOrdersForSlaTracking(): Collection;
 
     public function getSlaDashboardMetrics(): array;
+
+    public function getNotifications(?int $userId = null): Collection;
+
+    public function markNotificationRead(int $id): bool;
+
+    public function markAllNotificationsRead(?int $userId = null): int;
+
+    public function createNotification(array $data): ?object;
+
+    public function findNotificationByOrderAndType(int $orderId, string $type): ?object;
 }

@@ -21,6 +21,90 @@ class AssetAssignmentService
         return $this->assignments->paginate($filters, $perPage);
     }
 
+    public function getSummary(array $filters): array
+    {
+        return $this->assignments->getSummary($filters);
+    }
+
+    public function getLookups(): array
+    {
+        return $this->assignments->getLookups();
+    }
+
+    public function exportCsv(array $filters): string
+    {
+        $records = $this->assignments->getAllFiltered($filters);
+
+        $output = fopen('php://temp', 'r+');
+
+        // Encabezados descriptivos
+        fputcsv($output, [
+            'ID Asignacion',
+            'Codigo Patrimonial',
+            'Numero de Serie / Identificador',
+            'Tipo Identificador',
+            'Equipo / Nombre',
+            'Marca',
+            'Modelo',
+            'Area Solicitante',
+            'Area de Destino',
+            'Colaborador Asignado',
+            'Correo Colaborador',
+            'Fecha Asignacion',
+            'Fecha Devolucion Estimada',
+            'Fecha Devolucion Real',
+            'Estado Prestamo',
+            'Condicion Entrega',
+            'Condicion Devolucion',
+            'ID Pedido Vinculado',
+            'Observaciones Entrega',
+            'Observaciones Devolucion',
+        ]);
+
+        foreach ($records as $item) {
+            $asset = $item->asset;
+            $ident = $asset ? ($asset->numero_serie ?: $asset->identificador_alternativo ?: 'Sin serie') : '';
+
+            // Sanitización contra inyección de fórmulas en hojas de cálculo
+            $sanitize = function (?string $val): string {
+                if ($val === null) return '';
+                if (in_array(substr($val, 0, 1), ['=', '+', '-', '@'], true)) {
+                    return "'" . $val;
+                }
+                return $val;
+            };
+
+            fputcsv($output, [
+                $item->id_asignacion,
+                $sanitize($asset?->codigo_patrimonial ?? ''),
+                $sanitize($ident),
+                $sanitize($asset?->tipo_identificador_externo ?? 'Serie'),
+                $sanitize($asset?->nombre ?? ''),
+                $sanitize($asset?->marca ?? ''),
+                $sanitize($asset?->modelo ?? ''),
+                $sanitize($item->requestingArea?->nombre ?? 'Área solicitante no informada'),
+                $sanitize($item->assignedArea?->nombre ?? 'Sin área asignada'),
+                $sanitize($item->assignedUser?->nombre_completo ?? ''),
+                $sanitize($item->assignedUser?->correo ?? ''),
+                $item->fecha_asignacion ? $item->fecha_asignacion->toIso8601String() : '',
+                $item->fecha_devolucion_estimada ? $item->fecha_devolucion_estimada->format('Y-m-d') : '',
+                $item->fecha_devolucion_real ? $item->fecha_devolucion_real->toIso8601String() : '',
+                $item->estado,
+                $sanitize($item->condicion_entrega),
+                $sanitize($item->condicion_devolucion),
+                $item->id_pedido ?? '',
+                $sanitize($item->observaciones_entrega),
+                $sanitize($item->observaciones_devolucion),
+            ]);
+        }
+
+        rewind($output);
+        $csv = stream_get_contents($output);
+        fclose($output);
+
+        return $csv ?: '';
+    }
+
     public function getById(int $id): AssetAssignment
     {
         $assignment = $this->assignments->findById($id);

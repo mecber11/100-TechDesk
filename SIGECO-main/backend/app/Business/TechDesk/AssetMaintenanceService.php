@@ -40,9 +40,24 @@ class AssetMaintenanceService
             throw new DomainException('El activo seleccionado para mantenimiento no existe.', 'ASSET_NOT_FOUND', 404);
         }
 
+        $estado = $payload['estado'] ?? 'Programado';
+        $allowedStates = ['Programado', 'EnProceso', 'Completado', 'Cancelado'];
+        if (! in_array($estado, $allowedStates, true)) {
+            $estado = 'Programado';
+        }
+
+        if ($estado === 'Completado') {
+            if (empty($payload['tecnico_responsable'])) {
+                throw new DomainException('Debe especificar el técnico responsable para registrar un mantenimiento completado.', 'TECHNICIAN_REQUIRED', 422);
+            }
+            if (empty($payload['diagnostico_solucion'])) {
+                throw new DomainException('Debe registrar el diagnóstico y solución aplicada al completar la intervención.', 'DIAGNOSIS_REQUIRED', 422);
+            }
+        }
+
         $payload['realizado_por'] = $creatorId;
-        $payload['estado'] = $payload['estado'] ?? 'Programado';
-        $payload['costo'] = max(0, (float) ($payload['costo'] ?? 0));
+        $payload['estado'] = $estado;
+        $payload['costo'] = max(0.0, (float) ($payload['costo'] ?? 0));
 
         return $this->maintenances->create($payload);
     }
@@ -52,7 +67,21 @@ class AssetMaintenanceService
         $maintenance = $this->getById($id);
 
         if (isset($payload['costo'])) {
-            $payload['costo'] = max(0, (float) $payload['costo']);
+            $payload['costo'] = max(0.0, (float) $payload['costo']);
+        }
+
+        $targetState = $payload['estado'] ?? $maintenance->estado;
+
+        if ($targetState === 'Completado') {
+            $tech = $payload['tecnico_responsable'] ?? $maintenance->tecnico_responsable;
+            $diag = $payload['diagnostico_solucion'] ?? $maintenance->diagnostico_solucion;
+
+            if (empty($tech)) {
+                throw new DomainException('Debe especificar el técnico responsable para completar la intervención.', 'TECHNICIAN_REQUIRED', 422);
+            }
+            if (empty($diag)) {
+                throw new DomainException('Debe registrar el diagnóstico o solución aplicada para completar la intervención.', 'DIAGNOSIS_REQUIRED', 422);
+            }
         }
 
         return $this->maintenances->update($maintenance, $payload);

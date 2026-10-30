@@ -54,4 +54,35 @@ class SlaController extends Controller
 
         return response()->json(['data' => $metric]);
     }
+
+    public function notifications(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $userId = $user->id_usuario ?? $user->id ?? null;
+        $notifications = $this->slaService->getNotifications($userId);
+
+        return response()->json(['data' => $notifications]);
+    }
+
+    public function markNotificationRead(int $id): JsonResponse
+    {
+        $success = $this->slaService->markNotificationRead($id);
+
+        return response()->json([
+            'message' => $success ? 'Notificación marcada como leída.' : 'Notificación no encontrada.',
+            'success' => $success,
+        ]);
+    }
+
+    public function markAllNotificationsRead(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $userId = $user->id_usuario ?? $user->id ?? null;
+        $count = $this->slaService->markAllNotificationsRead($userId);
+
+        return response()->json([
+            'message' => "Se marcaron {$count} notificaciones como leídas.",
+            'count' => $count,
+        ]);
+    }
 }

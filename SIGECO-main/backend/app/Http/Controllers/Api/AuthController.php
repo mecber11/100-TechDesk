@@ -23,13 +23,12 @@ class AuthController extends Controller
             substr((string) $request->userAgent(), 0, 300),
         );
         $token = $result['token'];
-        if (! app()->environment('testing')) {
-            unset($result['token'], $result['token_type']);
-        }
+        $result['token'] = $token;
+        $result['token_type'] = 'Bearer';
 
         return response()->json($result)->cookie(
             'sigeco_session', $token, 480, '/', null,
-            app()->environment('production'), true, false, 'strict'
+            false, true, false, 'lax'
         );
     }
 

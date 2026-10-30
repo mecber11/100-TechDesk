@@ -12,6 +12,7 @@ import {
   Check,
   Trash2,
   Edit2,
+  Play,
 } from "lucide-react";
 import { api, type Paged } from "../../lib/api";
 import type { Asset, AssetMaintenance } from "./types";
@@ -94,6 +95,23 @@ export function AssetMaintenanceTab() {
     },
   });
 
+  // Transition Mutation (Start or Complete)
+  const transitionMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: any }) =>
+      api(`/techdesk/maintenances/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["techdesk-maintenances"] });
+      qc.invalidateQueries({ queryKey: ["techdesk-assets"] });
+      qc.invalidateQueries({ queryKey: ["techdesk-assets-kpis"] });
+    },
+    onError: (err: any) => {
+      alert(err.message || "No se pudo cambiar el estado del mantenimiento.");
+    },
+  });
+
   // Delete Mutation
   const deleteMutation = useMutation({
     mutationFn: (id: number) =>
@@ -104,23 +122,6 @@ export function AssetMaintenanceTab() {
     },
     onError: (err: any) => {
       alert(err.message || "No se pudo eliminar el mantenimiento.");
-    },
-  });
-
-  // Quick Complete Mutation
-  const completeMutation = useMutation({
-    mutationFn: (m: AssetMaintenance) =>
-      api(`/techdesk/maintenances/${m.id_mantenimiento}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          ...m,
-          estado: "Completado",
-          fecha_ejecucion: new Date().toISOString().split("T")[0],
-        }),
-      }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["techdesk-maintenances"] });
-      qc.invalidateQueries({ queryKey: ["techdesk-assets"] });
     },
   });
 
@@ -141,7 +142,7 @@ export function AssetMaintenanceTab() {
       diagnostico_solucion: m.diagnostico_solucion || "",
       piezas_reemplazadas: m.piezas_reemplazadas || "",
       costo: String(m.costo || "0.00"),
-      tecnico_responsable: m.tecnico_responsable,
+      tecnico_responsable: m.tecnico_responsable || "",
       estado: m.estado,
       fecha_programada: m.fecha_programada ? m.fecha_programada.substring(0, 10) : "",
       fecha_ejecucion: m.fecha_ejecucion ? m.fecha_ejecucion.substring(0, 10) : "",
@@ -154,9 +155,51 @@ export function AssetMaintenanceTab() {
     setOpenModal(true);
   }
 
+  function handleStartMaintenance(m: AssetMaintenance) {
+    transitionMutation.mutate({
+      id: m.id_mantenimiento,
+      payload: {
+        ...m,
+        estado: "EnProceso",
+      },
+    });
+  }
+
+  function handlePromptComplete(m: AssetMaintenance) {
+    // If technician or diagnosis is missing, open edit modal preselected to Completado
+    if (!m.tecnico_responsable || !m.diagnostico_solucion) {
+      handleOpenEdit({
+        ...m,
+        estado: "Completado",
+        fecha_ejecucion: new Date().toISOString().split("T")[0],
+      });
+      return;
+    }
+
+    transitionMutation.mutate({
+      id: m.id_mantenimiento,
+      payload: {
+        ...m,
+        estado: "Completado",
+        fecha_ejecucion: new Date().toISOString().split("T")[0],
+      },
+    });
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrorMsg(null);
+
+    if (form.estado === "Completado") {
+      if (!form.tecnico_responsable.trim()) {
+        setErrorMsg("Debe especificar el técnico responsable para dar por completado el mantenimiento.");
+        return;
+      }
+      if (!form.diagnostico_solucion.trim()) {
+        setErrorMsg("Debe registrar el diagnóstico o solución técnica aplicada para dar por completado el mantenimiento.");
+        return;
+      }
+    }
 
     const payload = {
       id_activo: parseInt(form.id_activo, 10),
@@ -169,7 +212,10 @@ export function AssetMaintenanceTab() {
       tecnico_responsable: form.tecnico_responsable,
       estado: form.estado,
       fecha_programada: form.fecha_programada,
-      fecha_ejecucion: form.fecha_ejecucion || null,
+      fecha_ejecucion:
+        form.estado === "Completado"
+          ? form.fecha_ejecucion || new Date().toISOString().split("T")[0]
+          : form.fecha_ejecucion || null,
       proximo_mantenimiento_sugerido: form.proximo_mantenimiento_sugerido || null,
       observaciones: form.observaciones || null,
     };
@@ -294,9 +340,9 @@ export function AssetMaintenanceTab() {
                       {m.titulo}
                     </td>
                     <td className="px-5 py-4 whitespace-nowrap text-xs text-slate-300">
-                      {m.tecnico_responsable}
+                      {m.tecnico_responsable || "Sin asignar"}
                     </td>
-                    <td className="px-5 py-4 whitespace-nowrap text-xs text-slate-300">
+                    <td className="px-5 py-4 whitespace-nowrap text-xs text-slate-300 font-mono">
                       {m.fecha_programada ? m.fecha_programada.substring(0, 10) : "-"}
                     </td>
                     <td className="px-5 py-4 whitespace-nowrap font-mono text-xs text-slate-200">
@@ -319,15 +365,28 @@ export function AssetMaintenanceTab() {
                       </span>
                     </td>
                     <td className="px-5 py-4 whitespace-nowrap text-right space-x-1.5">
-                      {m.estado !== "Completado" && (
+                      {/* Flow action: Programado -> EnProceso */}
+                      {m.estado === "Programado" && (
                         <button
-                          title="Marcar como Completado"
-                          onClick={() => completeMutation.mutate(m)}
+                          title="Iniciar Atención (En Proceso)"
+                          onClick={() => handleStartMaintenance(m)}
+                          className="p-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 transition-colors cursor-pointer"
+                        >
+                          <Play className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+
+                      {/* Flow action: EnProceso -> Completado */}
+                      {m.estado === "EnProceso" && (
+                        <button
+                          title="Finalizar Mantenimiento (Completado)"
+                          onClick={() => handlePromptComplete(m)}
                           className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition-colors cursor-pointer"
                         >
                           <Check className="h-3.5 w-3.5" />
                         </button>
                       )}
+
                       <button
                         title="Ver Ficha de Mantenimiento"
                         onClick={() => setSelectedDetail(m)}

@@ -6,7 +6,7 @@ use App\Data\Contracts\SlaRepositoryInterface;
 use App\Domain\Req\InternalOrder;
 use App\Domain\TechDesk\OrderSla;
 use App\Domain\TechDesk\SlaPolicy;
-use Carbon\Carbon;
+use App\Domain\TechDesk\TechDeskNotification;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -25,7 +25,7 @@ class SlaRepository implements SlaRepositoryInterface
     public function savePolicy(array $data, ?int $id = null): SlaPolicy
     {
         if ($id) {
-            $policy = SlaPolicy::query()->findOrFail($id);
+            $policy = SlaPolicy::query()->where('id_politica', $id)->firstOrFail();
             $policy->update($data);
 
             return $policy;
@@ -47,7 +47,14 @@ class SlaRepository implements SlaRepositoryInterface
             }
         }
 
-        return $query->whereNull('categoria')->first() ?: SlaPolicy::query()->where('activo', true)->first();
+        // Buscar política de la misma prioridad con categoría general (null)
+        $samePriorityGeneral = $query->whereNull('categoria')->first();
+        if ($samePriorityGeneral) {
+            return $samePriorityGeneral;
+        }
+
+        // Si no hay categoría general con esa prioridad, retornar cualquier política activa de esa misma prioridad
+        return SlaPolicy::query()->where('activo', true)->where('prioridad', $priority)->first();
     }
 
     public function findMetricByOrder(int $orderId): ?OrderSla
@@ -67,12 +74,14 @@ class SlaRepository implements SlaRepositoryInterface
 
     public function getActiveOrdersForSlaTracking(): Collection
     {
-        // Obtener pedidos no cerrados dirigidos a TI o creados recientemente
+        // Alcance TI: pedidos dirigidos a TI o creados para TI que se encuentren activos, sin límite silencioso de 50
         return InternalOrder::query()
             ->with(['fromArea', 'toArea', 'requestedBy:id_usuario,nombre_completo,correo'])
+            ->whereHas('toArea', function ($q) {
+                $q->where('codigo', 'TI');
+            })
             ->whereIn('estado', ['Enviado', 'EnAtencion', 'Escalado'])
-            ->orderByDesc('creado_en')
-            ->limit(50)
+            ->orderBy('creado_en')
             ->get();
     }
 
@@ -80,12 +89,14 @@ class SlaRepository implements SlaRepositoryInterface
     {
         $totalOrdersWithSla = OrderSla::query()->count();
         $cumplidos = OrderSla::query()->where('cumplio_sla', true)->count();
-        $vencidos = OrderSla::query()->where('estado_sla', 'Vencido')->orWhere('cumplio_sla', false)->count();
+        $vencidos = OrderSla::query()->where(function ($q) {
+            $q->where('estado_sla', 'Vencido')->orWhere('cumplio_sla', false);
+        })->count();
         $enRiesgo = OrderSla::query()->where('estado_sla', 'EnRiesgo')->count();
         $enTiempo = OrderSla::query()->where('estado_sla', 'EnTiempo')->count();
 
-        $tasaCumplimiento = $totalOrdersWithSla > 0
-            ? round(($cumplidos / max(1, $cumplidos + $vencidos)) * 100, 1)
+        $tasaCumplimiento = ($cumplidos + $vencidos) > 0
+            ? round(($cumplidos / ($cumplidos + $vencidos)) * 100, 1)
             : 100.0;
 
         $avgResolucion = OrderSla::query()
@@ -101,5 +112,57 @@ class SlaRepository implements SlaRepositoryInterface
             'tasa_cumplimiento_porcentaje' => $tasaCumplimiento,
             'tiempo_promedio_resolucion_horas' => $avgResolucion ? round($avgResolucion / 60, 1) : null,
         ];
+    }
+
+    public function getNotifications(?int $userId = null): Collection
+    {
+        $query = TechDeskNotification::query()->orderByDesc('creado_en');
+
+        if ($userId !== null) {
+            $query->where(function ($q) use ($userId) {
+                $q->whereNull('destinatario_id')->orWhere('destinatario_id', $userId);
+            });
+        }
+
+        return $query->limit(50)->get();
+    }
+
+    public function markNotificationRead(int $id): bool
+    {
+        $notification = TechDeskNotification::query()->find($id);
+        if ($notification) {
+            $notification->update(['leido' => true, 'actualizado_en' => now()]);
+            return true;
+        }
+
+        return false;
+    }
+
+    public function markAllNotificationsRead(?int $userId = null): int
+    {
+        $query = TechDeskNotification::query()->where('leido', false);
+        if ($userId !== null) {
+            $query->where(function ($q) use ($userId) {
+                $q->whereNull('destinatario_id')->orWhere('destinatario_id', $userId);
+            });
+        }
+
+        return $query->update(['leido' => true, 'actualizado_en' => now()]);
+    }
+
+    public function createNotification(array $data): ?object
+    {
+        $data['creado_en'] = now();
+        $data['actualizado_en'] = now();
+
+        return TechDeskNotification::query()->create($data);
+    }
+
+    public function findNotificationByOrderAndType(int $orderId, string $type): ?object
+    {
+        return TechDeskNotification::query()
+            ->where('id_pedido', $orderId)
+            ->where('tipo', $type)
+            ->first();
     }
 }

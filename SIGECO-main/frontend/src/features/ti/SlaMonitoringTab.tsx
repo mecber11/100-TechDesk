@@ -444,14 +444,14 @@ export function SlaMonitoringTab() {
                     </label>
                     <input
                       type="number"
-                      step="0.5"
+                      step="0.1"
                       min="0.1"
                       required
                       value={policyForm.tiempo_primera_respuesta_horas}
                       onChange={(e) =>
                         setPolicyForm({
                           ...policyForm,
-                          tiempo_primera_respuesta_horas: parseFloat(e.target.value) || 1,
+                          tiempo_primera_respuesta_horas: parseFloat(e.target.value) || 0.1,
                         })
                       }
                       className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-slate-200 focus:border-cyan-500 focus:outline-none"
@@ -464,14 +464,14 @@ export function SlaMonitoringTab() {
                     </label>
                     <input
                       type="number"
-                      step="0.5"
-                      min="0.5"
+                      step="0.1"
+                      min="0.1"
                       required
                       value={policyForm.tiempo_resolucion_horas}
                       onChange={(e) =>
                         setPolicyForm({
                           ...policyForm,
-                          tiempo_resolucion_horas: parseFloat(e.target.value) || 1,
+                          tiempo_resolucion_horas: parseFloat(e.target.value) || 0.1,
                         })
                       }
                       className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-slate-200 focus:border-cyan-500 focus:outline-none"

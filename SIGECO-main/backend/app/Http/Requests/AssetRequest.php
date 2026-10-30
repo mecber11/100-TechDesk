@@ -16,6 +16,10 @@ class AssetRequest extends FormRequest
         return [
             'codigo_patrimonial' => 'required|string|max:50',
             'numero_serie' => 'nullable|string|max:100',
+            'tipo_identificador_externo' => 'nullable|string|in:Serie,ServiceTag,IMEI,MAC,Otro',
+            'identificador_alternativo' => 'nullable|string|max:100',
+            'emisor_identificador_externo' => 'nullable|string|max:100',
+            'id_imagen' => 'nullable|integer',
             'nombre' => 'required|string|max:180',
             'tipo' => 'required|string|max:50',
             'marca' => 'required|string|max:80',
