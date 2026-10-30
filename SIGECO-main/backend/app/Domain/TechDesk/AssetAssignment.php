@@ -20,7 +20,7 @@ class AssetAssignment extends Model
 
     protected $casts = [
         'fecha_asignacion' => 'datetime',
-        'fecha_devolucion_estimada' => 'date',
+        'fecha_devolucion_estimada' => 'datetime',
         'fecha_devolucion_real' => 'datetime',
         'creado_en' => 'datetime',
         'actualizado_en' => 'datetime',
@@ -34,6 +34,7 @@ class AssetAssignment extends Model
         'asset_name',
         'requesting_area_name',
         'destination_area_name',
+        'due_status',
     ];
 
     public function getAssignmentIdAttribute(): ?int
@@ -69,6 +70,27 @@ class AssetAssignment extends Model
     public function getDestinationAreaNameAttribute(): ?string
     {
         return $this->assignedArea?->nombre;
+    }
+
+    public function getDueStatusAttribute(): ?string
+    {
+        if ($this->estado !== 'Activo' || ! $this->fecha_devolucion_estimada) {
+            return null;
+        }
+
+        $due = \Carbon\Carbon::parse($this->fecha_devolucion_estimada);
+        $now = now();
+
+        if ($due->lessThan($now)) {
+            return 'vencido';
+        }
+
+        // Si faltan 2 horas o menos (<= 120 minutos)
+        if ($now->diffInMinutes($due, false) <= 120) {
+            return 'por_vencer';
+        }
+
+        return 'vigente';
     }
 
     public function asset(): BelongsTo

@@ -28,6 +28,50 @@ const ASSET_TYPES = [
   "Otro",
 ];
 
+
+function formatLoanDateTime(isoString?: string | null): string {
+  if (!isoString) return "-";
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return isoString.substring(0, 10);
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, "0");
+    const mins = String(d.getMinutes()).padStart(2, "0");
+    return `${day}/${month}/${year} ${hours}:${mins}`;
+  } catch {
+    return isoString.substring(0, 16);
+  }
+}
+
+function getLoanTimeBadge(isoString?: string | null, estado?: string) {
+  if (!isoString || estado !== "Activo") return null;
+  const due = new Date(isoString).getTime();
+  const now = Date.now();
+  const diffMs = due - now;
+
+  if (diffMs < 0) {
+    const overdueMinutes = Math.abs(Math.floor(diffMs / (1000 * 60)));
+    if (overdueMinutes < 60) return `Vencido hace ${overdueMinutes}m`;
+    const overdueHours = Math.floor(overdueMinutes / 60);
+    return `Vencido hace ${overdueHours}h`;
+  }
+
+  const minutesLeft = Math.floor(diffMs / (1000 * 60));
+  if (minutesLeft <= 120) {
+    if (minutesLeft < 60) return `⚠️ Quedan ${minutesLeft} min`;
+    const h = Math.floor(minutesLeft / 60);
+    const m = minutesLeft % 60;
+    return `⚠️ Queda ${h}h ${m}m`;
+  }
+
+  const hoursLeft = Math.floor(minutesLeft / 60);
+  if (hoursLeft < 24) return `Quedan ${hoursLeft} horas`;
+  const days = Math.floor(hoursLeft / 24);
+  return `Quedan ${days} día${days > 1 ? "s" : ""}`;
+}
+
 export function AssetAssignmentsTab() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
@@ -53,7 +97,7 @@ export function AssetAssignmentsTab() {
     id_area_solicitante: "",
     id_area_destino: "",
     id_pedido: "",
-    fecha_devolucion_estimada: "",
+    horas_prestamo: "4",
     condicion_entrega: "Operativo",
     observaciones_entrega: "",
   });
@@ -137,7 +181,7 @@ export function AssetAssignmentsTab() {
         id_area_solicitante: "",
         id_area_destino: "",
         id_pedido: "",
-        fecha_devolucion_estimada: "",
+        horas_prestamo: "4",
         condicion_entrega: "Operativo",
         observaciones_entrega: "",
       });
@@ -197,7 +241,11 @@ export function AssetAssignmentsTab() {
         ? parseInt(assignForm.id_area_destino, 10)
         : null,
       id_pedido: assignForm.id_pedido ? parseInt(assignForm.id_pedido, 10) : null,
-      fecha_devolucion_estimada: assignForm.fecha_devolucion_estimada || null,
+      horas_prestamo: parseFloat(assignForm.horas_prestamo) || 4,
+      fecha_devolucion_estimada:
+        parseFloat(assignForm.horas_prestamo) > 0
+          ? new Date(Date.now() + parseFloat(assignForm.horas_prestamo) * 3600 * 1000).toISOString()
+          : null,
       condicion_entrega: assignForm.condicion_entrega,
       observaciones_entrega: assignForm.observaciones_entrega || null,
     };
@@ -238,7 +286,7 @@ export function AssetAssignmentsTab() {
             <Layers className="h-4 w-4 text-cyan-400" />
           </div>
           <p className="mt-2 text-2xl font-bold text-white tracking-tight">
-            {summary?.total ?? 0}
+            {summary?.total ?? summary?.total_filtrado ?? 0}
           </p>
           <p className="mt-0.5 text-[10px] text-slate-400">Historial acumulado</p>
         </div>
@@ -272,7 +320,7 @@ export function AssetAssignmentsTab() {
         <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-slate-900 to-slate-950 p-4 shadow-lg">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-amber-400 uppercase tracking-wider">
-              Por Vencer (&le;48h)
+              Por Vencer (&le;2h)
             </span>
             <Clock className="h-4 w-4 text-amber-400" />
           </div>
@@ -290,7 +338,7 @@ export function AssetAssignmentsTab() {
             <AlertTriangle className="h-4 w-4 text-rose-400" />
           </div>
           <p className="mt-2 text-2xl font-bold text-rose-400 tracking-tight">
-            {summary?.vencidos ?? 0}
+            {summary?.vencidos ?? summary?.activos_vencidos ?? 0}
           </p>
           <p className="mt-0.5 text-[10px] text-slate-400">Plazo estimado superado</p>
         </div>
@@ -361,7 +409,7 @@ export function AssetAssignmentsTab() {
           >
             <option value="">Plazo: Todos</option>
             <option value="vigente">Vigentes a tiempo</option>
-            <option value="por_vencer">Por vencer (&le;48h)</option>
+            <option value="por_vencer">Por vencer (&le;2h)</option>
             <option value="vencido">Vencidos</option>
           </select>
 
@@ -503,25 +551,32 @@ export function AssetAssignmentsTab() {
                         </div>
                       </td>
                       <td className="px-5 py-4 whitespace-nowrap text-xs text-slate-300 font-mono">
-                        {item.fecha_asignacion ? item.fecha_asignacion.substring(0, 10) : "-"}
+                        {item.fecha_asignacion ? formatLoanDateTime(item.fecha_asignacion) : "-"}
                       </td>
                       <td className="px-5 py-4 whitespace-nowrap text-xs">
                         {item.fecha_devolucion_real ? (
                           <span className="text-emerald-400 font-medium">
-                            Devuelto el {item.fecha_devolucion_real.substring(0, 10)}
+                            Devuelto el {formatLoanDateTime(item.fecha_devolucion_real)}
                           </span>
                         ) : item.fecha_devolucion_estimada ? (
-                          <span
-                            className={`font-medium ${
-                              item.due_status === "vencido"
-                                ? "text-rose-400"
-                                : item.due_status === "por_vencer"
-                                ? "text-amber-300"
-                                : "text-slate-300"
-                            }`}
-                          >
-                            {item.fecha_devolucion_estimada.substring(0, 10)}
-                          </span>
+                          <>
+                            <span
+                              className={`font-medium ${
+                                item.due_status === "vencido"
+                                  ? "text-rose-400"
+                                  : item.due_status === "por_vencer"
+                                  ? "text-amber-300"
+                                  : "text-slate-300"
+                              }`}
+                            >
+                              {formatLoanDateTime(item.fecha_devolucion_estimada)}
+                            </span>
+                            {item.estado === "Activo" && (
+                              <span className="text-[10px] text-slate-400 font-mono block">
+                                {getLoanTimeBadge(item.fecha_devolucion_estimada, item.estado)}
+                              </span>
+                            )}
+                          </>
                         ) : (
                           <span className="text-slate-500">Permanente</span>
                         )}
@@ -554,7 +609,7 @@ export function AssetAssignmentsTab() {
                           )}
                           {item.estado === "Activo" && item.due_status === "por_vencer" && (
                             <span className="text-[10px] font-semibold text-amber-400">
-                              Por vencer (&le;48h)
+                              Por vencer (&le;2h)
                             </span>
                           )}
                         </div>
@@ -747,20 +802,65 @@ export function AssetAssignmentsTab() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1">
-                      Fecha Devolución Estimada
-                    </label>
-                    <input
-                      type="date"
-                      value={assignForm.fecha_devolucion_estimada}
-                      onChange={(e) =>
-                        setAssignForm({
-                          ...assignForm,
-                          fecha_devolucion_estimada: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-slate-200 focus:border-cyan-500 focus:outline-none"
-                    />
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-medium text-slate-300">
+                        Duración del Préstamo (Horas) *
+                      </label>
+                      <span className="text-[11px] text-cyan-400 font-mono">
+                        {parseFloat(assignForm.horas_prestamo) > 0 ? (
+                          <>
+                            Vence:{" "}
+                            {new Date(Date.now() + parseFloat(assignForm.horas_prestamo) * 3600 * 1000).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </>
+                        ) : (
+                          "Indefinido"
+                        )}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-1.5 mb-2">
+                      {[
+                        { label: "2 hrs", value: "2" },
+                        { label: "4 hrs", value: "4" },
+                        { label: "8 hrs (Turno)", value: "8" },
+                        { label: "24 hrs (1d)", value: "24" },
+                      ].map((preset) => (
+                        <button
+                          type="button"
+                          key={preset.value}
+                          onClick={() => setAssignForm({ ...assignForm, horas_prestamo: preset.value })}
+                          className={`py-1 px-1.5 rounded-lg text-xs font-medium transition-all ${
+                            assignForm.horas_prestamo === preset.value
+                              ? "bg-cyan-500 text-slate-950 font-bold shadow-md shadow-cyan-500/20"
+                              : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white"
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0.5"
+                        max="720"
+                        step="0.5"
+                        placeholder="Horas de préstamo (ej. 4, 8, 24)..."
+                        value={assignForm.horas_prestamo}
+                        onChange={(e) =>
+                          setAssignForm({
+                            ...assignForm,
+                            horas_prestamo: e.target.value,
+                          })
+                        }
+                        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-slate-200 focus:border-cyan-500 focus:outline-none"
+                      />
+                      <span className="absolute right-3 top-2.5 text-xs text-slate-500">horas</span>
+                    </div>
                   </div>
 
                   <div>

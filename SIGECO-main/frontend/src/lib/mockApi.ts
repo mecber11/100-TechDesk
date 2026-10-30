@@ -564,10 +564,13 @@ export async function mockApi<T>(path: string, init?: RequestInit): Promise<T> {
     ).length;
 
     const summary: AssignmentSummary = {
+      total: filtered.length,
       total_filtrado: filtered.length,
       activos,
       devueltos,
       activos_vencidos,
+      vencidos: activos_vencidos,
+      por_vencer: 0,
     };
 
     return { data: summary } as unknown as T;

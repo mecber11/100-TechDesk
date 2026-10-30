@@ -95,22 +95,23 @@ class AssetAssignmentRepository implements AssetAssignmentRepositoryInterface
         // Filtro por estado de vencimiento (excluye devueltos del conteo de vencidos)
         if (! empty($filters['due_status'])) {
             $dueStatus = $filters['due_status'];
-            $threeDaysLater = Carbon::parse($today, 'America/Lima')->addDays(3)->toDateString();
+            $now = now();
+            $inTwoHours = now()->addHours(2);
 
-            if ($dueStatus === 'overdue') {
+            if ($dueStatus === 'overdue' || $dueStatus === 'vencido') {
                 $query->where('estado', 'Activo')
                     ->whereNotNull('fecha_devolucion_estimada')
-                    ->where('fecha_devolucion_estimada', '<', $today);
-            } elseif ($dueStatus === 'due_soon') {
+                    ->where('fecha_devolucion_estimada', '<', $now);
+            } elseif ($dueStatus === 'due_soon' || $dueStatus === 'por_vencer') {
                 $query->where('estado', 'Activo')
                     ->whereNotNull('fecha_devolucion_estimada')
-                    ->where('fecha_devolucion_estimada', '>=', $today)
-                    ->where('fecha_devolucion_estimada', '<=', $threeDaysLater);
-            } elseif ($dueStatus === 'on_track') {
+                    ->where('fecha_devolucion_estimada', '>=', $now)
+                    ->where('fecha_devolucion_estimada', '<=', $inTwoHours);
+            } elseif ($dueStatus === 'on_track' || $dueStatus === 'vigente') {
                 $query->where('estado', 'Activo')
                     ->whereNotNull('fecha_devolucion_estimada')
-                    ->where('fecha_devolucion_estimada', '>', $threeDaysLater);
-            } elseif ($dueStatus === 'no_due_date') {
+                    ->where('fecha_devolucion_estimada', '>', $inTwoHours);
+            } elseif ($dueStatus === 'no_due_date' || $dueStatus === 'permanente') {
                 $query->where('estado', 'Activo')
                     ->whereNull('fecha_devolucion_estimada');
             }
@@ -292,7 +293,8 @@ class AssetAssignmentRepository implements AssetAssignmentRepositoryInterface
 
     public function getSummary(array $filters): array
     {
-        $today = now()->setTimezone('America/Lima')->toDateString();
+        $now = now();
+        $inTwoHours = now()->addHours(2);
 
         $query = AssetAssignment::query();
         $this->applyFilters($query, $filters);
@@ -303,14 +305,24 @@ class AssetAssignmentRepository implements AssetAssignmentRepositoryInterface
         $activosVencidos = (clone $query)
             ->where('estado', 'Activo')
             ->whereNotNull('fecha_devolucion_estimada')
-            ->where('fecha_devolucion_estimada', '<', $today)
+            ->where('fecha_devolucion_estimada', '<', $now)
+            ->count();
+
+        $porVencer = (clone $query)
+            ->where('estado', 'Activo')
+            ->whereNotNull('fecha_devolucion_estimada')
+            ->where('fecha_devolucion_estimada', '>=', $now)
+            ->where('fecha_devolucion_estimada', '<=', $inTwoHours)
             ->count();
 
         return [
+            'total' => $totalFiltrado,
             'total_filtrado' => $totalFiltrado,
             'activos' => $activos,
             'devueltos' => $devueltos,
             'activos_vencidos' => $activosVencidos,
+            'vencidos' => $activosVencidos,
+            'por_vencer' => $porVencer,
         ];
     }
 

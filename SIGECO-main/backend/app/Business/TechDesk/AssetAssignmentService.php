@@ -133,6 +133,15 @@ class AssetAssignmentService
             throw new DomainException('Debe seleccionar el colaborador destinatario de la asignación.', 'USER_REQUIRED', 422);
         }
 
+        // Si se especifican horas de préstamo, calcular fecha_devolucion_estimada automáticamente
+        if (! empty($payload['horas_prestamo'])) {
+            $horas = (float) $payload['horas_prestamo'];
+            if ($horas > 0) {
+                $payload['fecha_devolucion_estimada'] = now()->addMinutes((int) round($horas * 60));
+            }
+        }
+        unset($payload['horas_prestamo']);
+
         $payload['asignado_por'] = $assignedByUserId;
         $payload['estado'] = 'Activo';
 

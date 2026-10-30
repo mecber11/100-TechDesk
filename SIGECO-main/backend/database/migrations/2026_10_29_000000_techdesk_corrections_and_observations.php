@@ -63,6 +63,9 @@ return new class extends Migration
                     ->nullOnDelete();
             }
 
+            // Permitir horas exactas en fecha_devolucion_estimada para préstamos por horas
+            DB::statement('ALTER TABLE ti.asignaciones_activo ALTER COLUMN fecha_devolucion_estimada TYPE timestamp with time zone USING fecha_devolucion_estimada::timestamp with time zone');
+
             // Índices para optimizar filtros combinados
             $table->index('fecha_asignacion', 'asignaciones_fecha_asignacion_idx');
             $table->index('fecha_devolucion_estimada', 'asignaciones_fecha_dev_est_idx');
